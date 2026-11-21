@@ -4,7 +4,7 @@ import { chromium } from 'playwright';
 import fs from 'node:fs';
 import path from 'node:path';
 
-const SHOTS = path.resolve('screenshots');
+const SHOTS = path.resolve(process.env.SHOTS_DIR || 'screenshots/core');
 fs.mkdirSync(SHOTS, { recursive: true });
 const DESKTOP = { viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1 };
 const MOBILE = { viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, hasTouch: true, isMobile: true };

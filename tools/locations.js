@@ -247,28 +247,3 @@ export const LOCATIONS = [
   ['Falklands', -51.7, -59.0, 350, 'FK', 2],
 ];
 
-// Country -> Natural Earth name field holding the local (non-Latin) script.
-export const LOCAL_SCRIPT = {
-  RU: 'ru', BY: 'ru', KZ: 'ru', KG: 'ru', TJ: 'ru', UZ: 'ru', TM: 'ru', MN: 'ru', BG: 'ru', RS: 'ru', MK: 'ru',
-  UA: 'uk',
-  GR: 'el', CY: 'el',
-  IL: 'he',
-  IR: 'fa', AF: 'fa',
-  PK: 'ur',
-  IN: 'hi', NP: 'hi',
-  BD: 'bn',
-  CN: 'zh', SG: 'zh', TW: 'zht', HK: 'zht',
-  JP: 'ja',
-  KR: 'ko', KP: 'ko',
-  AE: 'ar', QA: 'ar', BH: 'ar', KW: 'ar', IQ: 'ar', OM: 'ar', SA: 'ar', YE: 'ar', LB: 'ar', SY: 'ar', EG: 'ar',
-  DJ: 'ar', SD: 'ar', TN: 'ar', DZ: 'ar', MA: 'ar', SO: 'ar', LY: 'ar',
-};
-
-// Exonym fallbacks for countries whose script Natural Earth doesn't carry (Thai, Khmer, Sinhala, ...)
-// or whose local script is Latin. Those clues show names transliterated into a "foreign" script.
-export const CIPHER_SCRIPTS = ['ru', 'el', 'ja', 'ko', 'he', 'hi', 'ar', 'zh'];
-
-export const SCRIPT_LABEL = {
-  ru: 'Russian', uk: 'Ukrainian', el: 'Greek', he: 'Hebrew', fa: 'Persian', ur: 'Urdu', hi: 'Hindi',
-  bn: 'Bengali', zh: 'Chinese', zht: 'Chinese', ja: 'Japanese', ko: 'Korean', ar: 'Arabic',
-};
