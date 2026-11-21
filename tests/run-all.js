@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 // npm test: (a) build data, (b) unit tests, (c) start server, (d) bot soak, (e) browser e2e (solo + live,
 // desktop + mobile) with screenshots in ./screenshots/.
-// Flags: --no-build (reuse built data), --skip-e2e, --skip-soak.  Env: PORT (default 8787), TEST_SPEED (default 4)
+// Flags: --no-build (reuse built data), --skip-e2e, --skip-soak, --skip-static.  Env: PORT (default 8787), STATIC_PORT
+// (default PORT+1, serves docs/), TEST_SPEED (default 4), SHOTS_DIR (screenshots)
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -50,6 +51,15 @@ try {
   console.error('  ✖', e.stack || e);
 } finally {
   await srv.close();
+}
+if (!args.has('--skip-static') && !args.has('--skip-e2e')) {
+  step('static build (docs/) + e2e without a game server');
+  const b = spawnSync(process.execPath, ['tools/build-static.js'], { cwd: ROOT, stdio: ['ignore', 'ignore', 'inherit'] });
+  if (b.status !== 0) { failed = true; console.error('  ✖ build:static failed'); } else {
+    const { runStaticE2E } = await import('./static-e2e.mjs');
+    const { errors } = await runStaticE2E({ root: ROOT, speed, port: Number(process.env.STATIC_PORT) || port + 1 });
+    if (errors.length) { failed = true; console.error(errors.map((e) => '  ✖ ' + e).join('\n')); } else console.log('  ✔ static build plays a full match + daily solo');
+  }
 }
 step(failed ? 'FAILED' : 'ALL PASSED');
 process.exit(failed ? 1 : 0);
