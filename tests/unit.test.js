@@ -100,3 +100,19 @@ test('room: full fast game with a disconnecting human ends with ranking', async 
   assert.ok(m.ranking.filter((r) => r.alive).length >= 3);
   room.dispose();
 });
+
+test('data: live answers never shipped statically; clue files carry no coordinates', async () => {
+  const fs = await import('node:fs');
+  if (!fs.existsSync('data/build/answers.json')) return;
+  const live = JSON.parse(fs.readFileSync('data/build/answers.json', 'utf8'));
+  const pub = new Set(fs.readdirSync('public/data/solo').map((f) => f.replace('.json', '')));
+  assert.ok(live.length >= 150, 'live pool size ' + live.length);
+  for (const m of live) assert.ok(!pub.has(m.id), 'live clue exposed publicly: ' + m.name);
+  const one = fs.readFileSync(`data/build/clues/${live[0].id}.json`, 'utf8');
+  assert.ok(!/"(lat|lon|name)"/.test(one));
+  const LATIN = /[A-Za-z]{3,}/;
+  for (const f of [...pub].slice(0, 30)) {
+    const c = JSON.parse(fs.readFileSync(`public/data/solo/${f}.json`, 'utf8'));
+    for (const l of c.s4.labels) assert.ok(!LATIN.test(l[2]), 'latin label ' + l[2]);
+  }
+});

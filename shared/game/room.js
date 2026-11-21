@@ -74,7 +74,8 @@ export class TriangulateRoom {
       alive: this.phase === 'lobby', spec: this.phase !== 'lobby', total: 0, last: 0, lock: 0, guess: null,
       elimRound: 0, join: ++this.joinSeq, ready: false,
     };
-    if (this.mode === 'public' && this.phase === 'lobby' && this.list.length >= this.cfg.maxPlayers) this.removeOneBot();
+    // bots make way for humans: every human joining a public lobby replaces one bot
+    if (this.mode === 'public' && this.phase === 'lobby') this.removeOneBot();
     this.players.set(p.id, p);
     if (preSend) preSend(p.id);
     if (!this.hostId || !this.players.get(this.hostId)?.conn) this.hostId = p.id;
