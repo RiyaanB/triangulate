@@ -122,10 +122,10 @@
       </div>
       <div class="map-col">
         <div class="map-host" id="map-host"></div>
-        <div class="mini-board" id="mini-board" role="button" tabindex="0" aria-label="Show standings"></div>
+        <div class="mini-board" id="mini-board" data-map-obstacle="top" role="button" tabindex="0" aria-label="Show standings"></div>
         <div class="hint hidden" id="hint">Where is this? Drop a pin. Lock in early for more points.</div>
         <div class="map-actions">
-          <button id="btn-lock" class="btn btn-cta lock-btn" disabled><svg class="lk-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 11V8a5 5 0 0 1 10 0v3" fill="none" stroke="currentColor" stroke-width="2.6"/><rect x="4.5" y="11" width="15" height="10" rx="2" fill="currentColor"/></svg><span class="lock-txt">Drop a pin</span><span class="mult" id="lock-mult">×2.0</span></button>
+          <button id="btn-lock" class="btn btn-cta lock-btn" data-map-obstacle="bottom" disabled><svg class="lk-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 11V8a5 5 0 0 1 10 0v3" fill="none" stroke="currentColor" stroke-width="2.6"/><rect x="4.5" y="11" width="15" height="10" rx="2" fill="currentColor"/></svg><span class="lock-txt">Drop a pin</span><span class="mult" id="lock-mult">×2.0</span></button>
         </div>
         <button id="btn-world" class="btn btn-icon world-btn" title="Show whole world" aria-label="Show whole world"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18" fill="none" stroke="currentColor" stroke-width="1.6"/></svg></button>
         <div class="result card brackets hidden" id="result">
@@ -163,6 +163,6 @@
     </div>
   </section>
 
-  <footer class="credits">Map data: Natural Earth (public domain) · <span id="conn-state"></span></footer>
+  <footer class="credits">Map data: Natural Earth (public domain) <span id="conn-state"></span></footer>
 </body>
 </html>

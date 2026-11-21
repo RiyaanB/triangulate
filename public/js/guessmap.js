@@ -103,7 +103,8 @@ export class GuessMap {
     let x0 = 0, x1 = hr.width, y0 = 0, y1 = hr.height - padBottom;
     for (const o of document.querySelectorAll('[data-map-obstacle]')) {
       const r = o.getBoundingClientRect();
-      if (o.dataset.mapObstacle === 'top') { if (r.height && r.bottom > hr.top && r.top <= hr.top + 4) y0 = Math.max(y0, r.bottom - hr.top); continue; }
+      if (o.dataset.mapObstacle === 'top') { if (r.height && r.bottom > hr.top && r.top <= hr.top + 16) y0 = Math.max(y0, r.bottom - hr.top); continue; }
+      if (o.dataset.mapObstacle === 'bottom') { if (r.height && r.top < hr.bottom && r.bottom >= hr.bottom - 40 && r.top > hr.top + hr.height * 0.5) y1 = Math.min(y1, r.top - hr.top - 6); continue; }
       if (!r.width || r.bottom < hr.top + 40 || r.top > hr.bottom - 40) continue;
       if (r.right <= hr.left || r.left >= hr.right) continue;
       const l = r.left - hr.left, rr = r.right - hr.left;
@@ -129,7 +130,7 @@ export class GuessMap {
     for (const [x, y] of xy) { x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y); }
     const pad = 0.3;
     const dx = Math.max(x1 - x0, 5), dy = Math.max(y1 - y0, 5);
-    const k = Math.min(this.fitK * 40, Math.max(this.fitK, Math.min(f.w / (dx * (1 + 2 * pad)), f.h / (dy * (1 + 2 * pad)))));
+    const k = Math.min(this.fitK * 14, Math.max(this.fitK, Math.min(f.w / (dx * (1 + 2 * pad)), f.h / (dy * (1 + 2 * pad)))));
     const t = d3.zoomIdentity.translate(f.cx - k * (x0 + x1) / 2, f.y + f.h * 0.52 - k * (y0 + y1) / 2).scale(k);
     (animate ? this.sel.transition().duration(1200).ease(d3.easeCubicInOut) : this.sel).call(this.zoom.transform, t);
   }
@@ -194,8 +195,9 @@ export class GuessMap {
 
   /** Lock-in: shockwave, particle burst and a floating multiplier label. */
   setLocked(v, label) {
+    const was = this.locked;
     this.locked = v;
-    if (v && this.pin) {
+    if (v && !was && this.pin) {
       const p = this.pin;
       if (!label) label = document.querySelector('#lock-mult')?.textContent || '';
       const parts = Array.from({ length: LOFX ? 14 : 24 }, (_, i) => { const a = (i / (LOFX ? 14 : 24)) * Math.PI * 2 + Math.random() * 0.3; const s = 40 + Math.random() * 50; return [Math.cos(a) * s, Math.sin(a) * s * 0.8, 1.5 + Math.random() * 2.5]; });

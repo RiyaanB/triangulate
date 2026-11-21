@@ -4,61 +4,76 @@
   <script>window.TRI_STATIC = true;</script>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
-  <meta name="theme-color" content="#070d18">
+  <meta name="theme-color" content="#050a18">
   <title>TRIANGULATE — guess the place from its shape</title>
   <meta name="description" content="A live geo-guessing battle royale played from map shapes alone.">
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <script>
+    // theme boot (before first paint): ?theme=night|atlas|arcade, else last choice
+    (function () { try {
+      var q = new URLSearchParams(location.search).get('theme'), t = q || localStorage.getItem('tri.theme');
+      if (q) localStorage.setItem('tri.theme', q);
+      if (t && t !== 'night') document.documentElement.dataset.theme = t;
+    } catch (e) {} })();
+  </script>
   <link rel="stylesheet" href="css/ui-kit.css">
   <link rel="stylesheet" href="css/game.css">
   <script src="vendor/d3.min.js" defer></script>
   <script type="module" src="js/app.js"></script>
+  <script type="module" src="js/fx/ambient.js"></script>
 </head>
 <body>
-  <div class="bg-fx" aria-hidden="true"></div>
+  <div class="bg-fx" aria-hidden="true"><canvas id="bg-globe"></canvas><div class="bg-grid"></div><div class="bg-scan"></div></div>
 
   <!-- TITLE -->
   <section id="scr-title" class="screen active">
     <div class="title-wrap">
       <div class="logo">
         <svg class="logo-mark" viewBox="0 0 100 100" aria-hidden="true">
-          <defs><linearGradient id="lg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#5ce1e6"/><stop offset="1" stop-color="#7c6cff"/></linearGradient></defs>
-          <path d="M50 8 L92 84 L8 84 Z" fill="none" stroke="url(#lg)" stroke-width="7" stroke-linejoin="round"/>
-          <circle cx="50" cy="60" r="9" fill="#ffcc4d"/>
-          <path d="M50 8 L50 60 M92 84 L50 60 M8 84 L50 60" stroke="url(#lg)" stroke-width="2.5" opacity=".6"/>
+          <path class="lm-tri" d="M50 8 L92 84 L8 84 Z"/>
+          <path class="lm-spokes" d="M50 8 L50 60 M92 84 L50 60 M8 84 L50 60"/>
+          <circle class="lm-ping" cx="50" cy="60" r="9"/>
+          <circle class="lm-dot" cx="50" cy="60" r="7"/>
         </svg>
-        <h1>TRIANGULATE</h1>
+        <h1 class="logo-word" data-text="TRIANGULATE">TRIANGULATE</h1>
       </div>
       <p class="tagline">Guess the place from its <b>shape</b>. Last one standing wins.</p>
-      <div class="nick-row">
-        <input id="nick" class="input" maxlength="16" autocomplete="off" spellcheck="false" aria-label="Nickname">
-        <button id="dice" class="btn btn-icon" title="Random name" aria-label="Random name">🎲</button>
-      </div>
-      <button id="btn-play" class="btn btn-primary btn-xl">PLAY</button>
-      <div class="alt-row">
-        <button id="btn-solo" class="btn">☀️ Daily solo</button>
-        <button id="btn-private" class="btn">🔒 Private room</button>
-      </div>
-      <div id="private-panel" class="private-panel hidden">
-        <button id="btn-create" class="btn btn-sm">Create room</button>
-        <span class="or">or</span>
-        <input id="code-in" class="input code-input" maxlength="4" placeholder="CODE" autocomplete="off" spellcheck="false" aria-label="Room code">
-        <button id="btn-join" class="btn btn-sm">Join</button>
+      <div class="title-card card brackets glass">
+        <label class="field-lbl" for="nick">Callsign</label>
+        <div class="nick-row">
+          <input id="nick" class="input" maxlength="16" autocomplete="off" spellcheck="false" aria-label="Nickname">
+          <button id="dice" class="btn btn-icon" title="Random name" aria-label="Random name">🎲</button>
+        </div>
+        <button id="btn-play" class="btn btn-primary btn-xl"><span>PLAY</span><small>live · 20 players</small></button>
+        <div class="alt-row">
+          <button id="btn-solo" class="btn">☀ Daily solo</button>
+          <button id="btn-private" class="btn">🔒 Private room</button>
+        </div>
+        <div id="private-panel" class="private-panel hidden">
+          <button id="btn-create" class="btn btn-sm">Create room</button>
+          <span class="or">or</span>
+          <input id="code-in" class="input code-input" maxlength="4" placeholder="CODE" autocomplete="off" spellcheck="false" aria-label="Room code">
+          <button id="btn-join" class="btn btn-sm">Join</button>
+        </div>
       </div>
       <div class="how">
-        <span><i class="ic ic-coast"></i>coast</span><span class="arr">→</span>
-        <span><i class="ic ic-river"></i>rivers</span><span class="arr">→</span>
-        <span><i class="ic ic-road"></i>roads</span><span class="arr">→</span>
-        <span><i class="ic ic-script"></i>names</span>
+        <span><i class="ic ic-coast"></i>coast<b>×2.0</b></span><span class="arr"></span>
+        <span><i class="ic ic-river"></i>rivers<b>×1.6</b></span><span class="arr"></span>
+        <span><i class="ic ic-road"></i>roads<b>×1.3</b></span><span class="arr"></span>
+        <span><i class="ic ic-script"></i>names<b>×1.0</b></span>
+      </div>
+      <div class="theme-pick" role="group" aria-label="Visual theme">
+        <span>Style</span><button data-theme-set="night">Night</button><button data-theme-set="atlas">Atlas</button><button data-theme-set="arcade">Arcade</button>
       </div>
     </div>
   </section>
 
   <!-- LOBBY -->
   <section id="scr-lobby" class="screen">
-    <div class="lobby card">
+    <div class="lobby card brackets glass">
       <div class="lobby-head">
         <div>
-          <div class="eyebrow" id="lobby-kind">Public match</div>
+          <div class="eyebrow"><span class="rec"></span><span id="lobby-kind">Public match</span></div>
           <h2 id="lobby-title">Finding players…</h2>
         </div>
         <div class="lobby-count"><span id="lobby-ms">–</span><small>starting</small></div>
@@ -75,9 +90,9 @@
 
   <!-- GAME -->
   <section id="scr-game" class="screen">
-    <header class="topbar">
+    <header class="topbar" data-map-obstacle="top">
       <div class="tb-left">
-        <svg class="tb-logo" viewBox="0 0 100 100" aria-hidden="true"><path d="M50 10 L90 82 L10 82 Z" fill="none" stroke="#5ce1e6" stroke-width="9" stroke-linejoin="round"/><circle cx="50" cy="60" r="10" fill="#ffcc4d"/></svg>
+        <svg class="tb-logo" viewBox="0 0 100 100" aria-hidden="true"><path d="M50 10 L90 82 L10 82 Z" fill="none" stroke="currentColor" stroke-width="9" stroke-linejoin="round"/><circle cx="50" cy="60" r="10" fill="var(--hot)"/></svg>
         <span class="chip" id="round-chip">Round 1/7</span>
         <span class="chip alive-chip" id="alive-chip">20 alive</span>
         <span class="chip spec-chip hidden" id="spec-chip">👁<span class="t"> Spectating</span></span>
@@ -91,7 +106,7 @@
     </header>
     <main class="game-grid">
       <div class="clue-col">
-        <div class="clue-card card">
+        <div class="clue-card card brackets glass" data-map-obstacle>
           <div class="stagebar" id="stagebar">
             <div class="seg" data-i="1"><i class="ic ic-coast"></i><span class="lbl">Coast</span><b>×2.0</b><span class="fill"></span></div>
             <div class="seg" data-i="2"><i class="ic ic-river"></i><span class="lbl">Rivers</span><b>×1.6</b><span class="fill"></span></div>
@@ -102,18 +117,19 @@
             <div class="clue-ring" id="ring"></div>
             <div class="script-tag hidden" id="script-tag"></div>
             <div class="answer-tag hidden" id="answer-tag"></div>
-            <div class="clue-wait" id="clue-wait"><div class="spinner"></div></div>
+            <div class="clue-wait" id="clue-wait"><div class="radar-spin"></div><span>Acquiring signal…</span></div>
           </div>
         </div>
       </div>
-      <div class="map-col card">
+      <div class="map-col">
         <div class="map-host" id="map-host"></div>
+        <div class="mini-board" id="mini-board" data-map-obstacle="top" role="button" tabindex="0" aria-label="Show standings"></div>
         <div class="hint hidden" id="hint">Where is this? Drop a pin. Lock in early for more points.</div>
         <div class="map-actions">
-          <button id="btn-lock" class="btn btn-primary lock-btn" disabled><span class="lock-txt">Drop a pin</span><span class="mult" id="lock-mult">×2.0</span></button>
+          <button id="btn-lock" class="btn btn-cta lock-btn" data-map-obstacle="bottom" disabled><svg class="lk-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 11V8a5 5 0 0 1 10 0v3" fill="none" stroke="currentColor" stroke-width="2.6"/><rect x="4.5" y="11" width="15" height="10" rx="2" fill="currentColor"/></svg><span class="lock-txt">Drop a pin</span><span class="mult" id="lock-mult">×2.0</span></button>
         </div>
-        <button id="btn-world" class="btn btn-icon world-btn" title="Show whole world" aria-label="Show whole world">🌐</button>
-        <div class="result hidden" id="result">
+        <button id="btn-world" class="btn btn-icon world-btn" title="Show whole world" aria-label="Show whole world"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18" fill="none" stroke="currentColor" stroke-width="1.6"/></svg></button>
+        <div class="result card brackets hidden" id="result">
           <div class="res-place" id="res-place"></div>
           <div class="res-row">
             <div><small>Distance</small><b id="res-dist">–</b></div>
@@ -123,8 +139,8 @@
           <div class="res-best" id="res-best"></div>
         </div>
       </div>
-      <aside class="board card" id="board">
-        <div class="board-head"><span>Standings</span><small id="board-sub"></small></div>
+      <aside class="board card brackets glass" id="board" data-map-obstacle>
+        <div class="board-head"><span>Live standings</span><small id="board-sub"></small></div>
         <ol class="board-list" id="board-list"></ol>
         <div class="board-foot" id="board-foot"></div>
       </aside>
@@ -134,7 +150,7 @@
 
   <!-- GAME OVER -->
   <section id="scr-over" class="screen">
-    <div class="over card">
+    <div class="over card brackets glass">
       <div class="eyebrow">Game over</div>
       <h2 id="over-title">Winner</h2>
       <div class="podium" id="podium"></div>
@@ -148,6 +164,6 @@
     </div>
   </section>
 
-  <footer class="credits">Map data: Natural Earth (public domain) · <span id="conn-state"></span></footer>
+  <footer class="credits">Map data: Natural Earth (public domain) <span id="conn-state"></span></footer>
 </body>
 </html>

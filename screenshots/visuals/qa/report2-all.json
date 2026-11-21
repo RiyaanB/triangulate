@@ -1,0 +1,596 @@
+{
+ "p360": {
+  "errs": [],
+  "shots": {
+   "02-round-pin": {
+    "sw": 360,
+    "sh": 740,
+    "W": 360,
+    "H": 740,
+    "over": [
+     "#board.board.card.brackets.glass<aside> 6,761,354,1184"
+    ],
+    "overlap": [],
+    "clip": [],
+    "lock": {
+     "rect": [
+      16,
+      650,
+      344,
+      712
+     ],
+     "visible": true,
+     "hitOk": true,
+     "hit": ".lock-txt<span>",
+     "disabled": false,
+     "text": "Lock in×1.0"
+    },
+    "phase": "round"
+   },
+   "s03-reveal": {
+    "sw": 360,
+    "sh": 740,
+    "W": 360,
+    "H": 740,
+    "over": [
+     "#board.board.card.brackets.glass<aside> 6,759,354,1147"
+    ],
+    "overlap": [],
+    "clip": [],
+    "lock": {
+     "rect": [
+      16,
+      650,
+      344,
+      712
+     ],
+     "visible": true,
+     "hitOk": false,
+     "hit": ".<div>",
+     "disabled": true,
+     "text": "Locked in×1.0"
+    },
+    "phase": "reveal"
+   },
+   "s04-standings": {
+    "sw": 360,
+    "sh": 740,
+    "W": 360,
+    "H": 740,
+    "over": [
+     "#board.board.card.brackets.glass.open<aside> 6,435,354,823"
+    ],
+    "overlap": [
+     "#result.result.card.brackets<div> X #board.board.card.brackets.glass.open<aside> 328x145"
+    ],
+    "clip": [],
+    "lock": {
+     "rect": [
+      16,
+      674,
+      344,
+      736
+     ],
+     "visible": false,
+     "hitOk": false,
+     "hit": ".row<li>",
+     "disabled": true,
+     "text": "Locked in×1.0"
+    },
+    "phase": "standings"
+   }
+  }
+ },
+ "p412": {
+  "errs": [],
+  "shots": {
+   "02-round-pin": {
+    "sw": 412,
+    "sh": 915,
+    "W": 412,
+    "H": 915,
+    "over": [
+     "#board.board.card.brackets.glass<aside> 6,936,406,1359"
+    ],
+    "overlap": [],
+    "clip": [],
+    "lock": {
+     "rect": [
+      16,
+      825,
+      396,
+      887
+     ],
+     "visible": true,
+     "hitOk": true,
+     "hit": ".lock-txt<span>",
+     "disabled": false,
+     "text": "Lock in×1.0"
+    },
+    "phase": "round"
+   },
+   "s03-reveal": {
+    "sw": 412,
+    "sh": 915,
+    "W": 412,
+    "H": 915,
+    "over": [
+     "#board.board.card.brackets.glass<aside> 6,934,406,1322"
+    ],
+    "overlap": [],
+    "clip": [],
+    "lock": {
+     "rect": [
+      16,
+      825,
+      396,
+      887
+     ],
+     "visible": true,
+     "hitOk": false,
+     "hit": ".<div>",
+     "disabled": true,
+     "text": "Locked in×1.0"
+    },
+    "phase": "reveal"
+   },
+   "s04-standings": {
+    "sw": 412,
+    "sh": 915,
+    "W": 412,
+    "H": 915,
+    "over": [
+     "#board.board.card.brackets.glass.open<aside> 6,934,406,1322"
+    ],
+    "overlap": [],
+    "clip": [],
+    "lock": {
+     "rect": [
+      16,
+      849,
+      396,
+      911
+     ],
+     "visible": false,
+     "hitOk": false,
+     "hit": "#result.result.card.brackets<div>",
+     "disabled": true,
+     "text": "Locked in×1.0"
+    },
+    "phase": "standings"
+   }
+  }
+ },
+ "t768": {
+  "errs": [],
+  "shots": {
+   "02-round-pin": {
+    "sw": 768,
+    "sh": 1024,
+    "W": 768,
+    "H": 1024,
+    "over": [
+     "#board.board.card.brackets.glass<aside> 6,1045,762,1461"
+    ],
+    "overlap": [],
+    "clip": [],
+    "lock": {
+     "rect": [
+      16,
+      934,
+      752,
+      996
+     ],
+     "visible": true,
+     "hitOk": true,
+     "hit": ".lock-txt<span>",
+     "disabled": false,
+     "text": "Lock in×1.0"
+    },
+    "phase": "round"
+   },
+   "s03-reveal": {
+    "sw": 768,
+    "sh": 1024,
+    "W": 768,
+    "H": 1024,
+    "over": [
+     "#board.board.card.brackets.glass<aside> 6,1043,762,1431"
+    ],
+    "overlap": [],
+    "clip": [],
+    "lock": {
+     "rect": [
+      16,
+      934,
+      752,
+      996
+     ],
+     "visible": true,
+     "hitOk": false,
+     "hit": ".<div>",
+     "disabled": true,
+     "text": "Locked in×1.0"
+    },
+    "phase": "reveal"
+   },
+   "s04-standings": {
+    "sw": 768,
+    "sh": 1024,
+    "W": 768,
+    "H": 1024,
+    "over": [
+     "#board.board.card.brackets.glass.open<aside> 6,645,762,1033"
+    ],
+    "overlap": [
+     "#btn-world.btn.btn-icon.world-btn<button> X #board.board.card.brackets.glass.open<aside> 34x34",
+     "#result.result.card.brackets<div> X #board.board.card.brackets.glass.open<aside> 736x130",
+     "#mini-board.mini-board<div> X #board.board.card.brackets.glass.open<aside> 692x26",
+     "#board.board.card.brackets.glass.open<aside> X .clue-card.card.brackets.glass<div> 752x24"
+    ],
+    "clip": [],
+    "lock": {
+     "rect": [
+      16,
+      958,
+      752,
+      1020
+     ],
+     "visible": false,
+     "hitOk": false,
+     "hit": ".row<li>",
+     "disabled": true,
+     "text": "Locked in×1.0"
+    },
+    "phase": "standings"
+   }
+  }
+ },
+ "l1024": {
+  "errs": [],
+  "shots": {
+   "02-round-pin": {
+    "sw": 1024,
+    "sh": 768,
+    "W": 1024,
+    "H": 768,
+    "over": [
+     "#board.board.card.brackets.glass<aside> 1059,64,1369,473"
+    ],
+    "overlap": [],
+    "clip": [
+     ".lbl<span> \"Coast\" 37>32",
+     ".lbl<span> \"Rivers\" 45>32",
+     ".lbl<span> \"Roads\" 37>32",
+     ".lbl<span> \"Names\" 37>32"
+    ],
+    "lock": {
+     "rect": [
+      611,
+      658,
+      901,
+      720
+     ],
+     "visible": true,
+     "hitOk": true,
+     "hit": ".lock-txt<span>",
+     "disabled": false,
+     "text": "Lock in×1.0"
+    },
+    "phase": "round"
+   },
+   "s03-reveal": {
+    "sw": 1024,
+    "sh": 768,
+    "W": 1024,
+    "H": 768,
+    "over": [
+     "#board.board.card.brackets.glass<aside> 1059,64,1369,445"
+    ],
+    "overlap": [
+     ".gm-zoom<div> X #result.result.card.brackets<div> 10x82",
+     "#btn-world.btn.btn-icon.world-btn<button> X #result.result.card.brackets<div> 8x38"
+    ],
+    "clip": [
+     ".lbl<span> \"Coast\" 37>32",
+     ".lbl<span> \"Rivers\" 45>32",
+     ".lbl<span> \"Roads\" 37>32",
+     ".lbl<span> \"Names\" 37>32"
+    ],
+    "lock": {
+     "rect": [
+      611,
+      682,
+      901,
+      744
+     ],
+     "visible": false,
+     "hitOk": false,
+     "hit": "#result.result.card.brackets<div>",
+     "disabled": true,
+     "text": "Locked in×1.0"
+    },
+    "phase": "reveal"
+   },
+   "s04-standings": {
+    "sw": 1024,
+    "sh": 768,
+    "W": 1024,
+    "H": 768,
+    "over": [],
+    "overlap": [
+     ".gm-zoom<div> X #result.result.card.brackets<div> 10x82",
+     "#btn-world.btn.btn-icon.world-btn<button> X #result.result.card.brackets<div> 8x38"
+    ],
+    "clip": [
+     ".lbl<span> \"Coast\" 37>32",
+     ".lbl<span> \"Rivers\" 45>32",
+     ".lbl<span> \"Roads\" 37>32",
+     ".lbl<span> \"Names\" 37>32"
+    ],
+    "lock": {
+     "rect": [
+      611,
+      682,
+      901,
+      744
+     ],
+     "visible": false,
+     "hitOk": false,
+     "hit": "#result.result.card.brackets<div>",
+     "disabled": true,
+     "text": "Locked in×1.0"
+    },
+    "phase": "standings"
+   }
+  }
+ },
+ "d1280": {
+  "errs": [],
+  "shots": {
+   "02-round-pin": {
+    "sw": 1280,
+    "sh": 720,
+    "W": 1280,
+    "H": 720,
+    "over": [],
+    "overlap": [],
+    "clip": [
+     ".lbl<span> \"Rivers\" 45>42"
+    ],
+    "lock": {
+     "rect": [
+      601,
+      610,
+      891,
+      672
+     ],
+     "visible": true,
+     "hitOk": true,
+     "hit": ".lock-txt<span>",
+     "disabled": false,
+     "text": "Lock in×1.0"
+    },
+    "phase": "round"
+   },
+   "s03-reveal": {
+    "sw": 1280,
+    "sh": 720,
+    "W": 1280,
+    "H": 720,
+    "over": [],
+    "overlap": [
+     ".gm-zoom<div> X #result.result.card.brackets<div> 28x82",
+     "#btn-world.btn.btn-icon.world-btn<button> X #result.result.card.brackets<div> 28x38"
+    ],
+    "clip": [
+     ".lbl<span> \"Rivers\" 45>42"
+    ],
+    "lock": {
+     "rect": [
+      601,
+      634,
+      891,
+      696
+     ],
+     "visible": false,
+     "hitOk": false,
+     "hit": "#result.result.card.brackets<div>",
+     "disabled": true,
+     "text": "Locked in×1.0"
+    },
+    "phase": "reveal"
+   },
+   "s04-standings": {
+    "sw": 1280,
+    "sh": 720,
+    "W": 1280,
+    "H": 720,
+    "over": [],
+    "overlap": [
+     ".gm-zoom<div> X #result.result.card.brackets<div> 28x82",
+     "#btn-world.btn.btn-icon.world-btn<button> X #result.result.card.brackets<div> 28x38"
+    ],
+    "clip": [
+     ".lbl<span> \"Rivers\" 45>42"
+    ],
+    "lock": {
+     "rect": [
+      601,
+      634,
+      891,
+      696
+     ],
+     "visible": false,
+     "hitOk": false,
+     "hit": "#result.result.card.brackets<div>",
+     "disabled": true,
+     "text": "Locked in×1.0"
+    },
+    "phase": "standings"
+   }
+  }
+ },
+ "d1920": {
+  "errs": [],
+  "shots": {
+   "02-round-pin": {
+    "sw": 1920,
+    "sh": 1080,
+    "W": 1920,
+    "H": 1080,
+    "over": [],
+    "overlap": [],
+    "clip": [],
+    "lock": {
+     "rect": [
+      1049,
+      970,
+      1339,
+      1032
+     ],
+     "visible": true,
+     "hitOk": true,
+     "hit": ".lock-txt<span>",
+     "disabled": false,
+     "text": "Lock in×1.0"
+    },
+    "phase": "round"
+   },
+   "s03-reveal": {
+    "sw": 1920,
+    "sh": 1080,
+    "W": 1920,
+    "H": 1080,
+    "over": [],
+    "overlap": [],
+    "clip": [],
+    "lock": {
+     "rect": [
+      1049,
+      970,
+      1339,
+      1032
+     ],
+     "visible": true,
+     "hitOk": false,
+     "hit": ".<div>",
+     "disabled": true,
+     "text": "Locked in×1.0"
+    },
+    "phase": "standings"
+   },
+   "s04-standings": {
+    "sw": 1920,
+    "sh": 1080,
+    "W": 1920,
+    "H": 1080,
+    "over": [],
+    "overlap": [
+     "#result.result.card.brackets<div> X #skip-bar.skip-bar<div> 169x32"
+    ],
+    "clip": [],
+    "lock": {
+     "rect": [
+      1046,
+      994,
+      1340,
+      1056
+     ],
+     "visible": false,
+     "hitOk": false,
+     "hit": "#result.result.card.brackets<div>",
+     "disabled": true,
+     "text": "Spectating×1.0"
+    },
+    "phase": "standings"
+   }
+  }
+ },
+ "lp844": {
+  "errs": [],
+  "shots": {
+   "02-round-pin": {
+    "sw": 844,
+    "sh": 390,
+    "W": 844,
+    "H": 390,
+    "over": [
+     "#board.board.card.brackets.glass<aside> 879,64,1189,344"
+    ],
+    "overlap": [],
+    "clip": [],
+    "lock": {
+     "rect": [
+      400,
+      280,
+      690,
+      342
+     ],
+     "visible": true,
+     "hitOk": true,
+     "hit": ".lock-txt<span>",
+     "disabled": false,
+     "text": "Lock in×1.0"
+    },
+    "phase": "round"
+   },
+   "s03-reveal": {
+    "sw": 844,
+    "sh": 390,
+    "W": 844,
+    "H": 390,
+    "over": [
+     "#board.board.card.brackets.glass<aside> 879,64,1189,344"
+    ],
+    "overlap": [],
+    "clip": [],
+    "lock": {
+     "rect": [
+      400,
+      280,
+      690,
+      342
+     ],
+     "visible": true,
+     "hitOk": false,
+     "hit": ".<div>",
+     "disabled": true,
+     "text": "Locked in×1.0"
+    },
+    "phase": "reveal"
+   },
+   "s04-standings": {
+    "sw": 844,
+    "sh": 390,
+    "W": 844,
+    "H": 390,
+    "over": [
+     "#board.board.card.brackets.glass.open<aside> 581,64,891,344"
+    ],
+    "overlap": [
+     ".gm-zoom<div> X #board.board.card.brackets.glass.open<aside> 38x82",
+     "#btn-world.btn.btn-icon.world-btn<button> X #board.board.card.brackets.glass.open<aside> 38x38",
+     "#result.result.card.brackets<div> X #board.board.card.brackets.glass.open<aside> 184x151"
+    ],
+    "clip": [
+     "#answer-tag.answer-tag<div> \"📍 Lake Maracaibo\" 228>186"
+    ],
+    "lock": {
+     "rect": [
+      400,
+      304,
+      690,
+      366
+     ],
+     "visible": false,
+     "hitOk": false,
+     "hit": "#result.result.card.brackets<div>",
+     "disabled": true,
+     "text": "Locked in×1.0"
+    },
+    "phase": "standings"
+   }
+  }
+ }
+}
