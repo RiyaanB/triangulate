@@ -34,7 +34,7 @@ async function tapLatLon(page, lat, lon, mobile) {
  * Play until game over. `oracle(page)` may return the true answer (for a strong player);
  * otherwise guesses a random big city.
  */
-async function playGame(page, { tag, mobile = false, oracle = null, jitterKm = 150, shots = {}, stagePick = () => 1 + Math.floor(Math.random() * 4) }) {
+export async function playGame(page, { tag, mobile = false, oracle = null, jitterKm = 150, shots = {}, stagePick = () => 1 + Math.floor(Math.random() * 4) }) {
   const seen = { elim: false, rounds: 0 };
   for (;;) {
     const ph = await waitPhase(page, ['round', 'over'], 120000);
@@ -46,7 +46,7 @@ async function playGame(page, { tag, mobile = false, oracle = null, jitterKm = 1
       const target = round === 1 && shots.stages ? 4 : stagePick(round);
       for (let s = 1; s <= target; s++) {
         await page.waitForFunction((s) => window.__tri.stage >= s || window.__tri.phase !== 'round', s, { timeout: 60000, polling: 50 });
-        if (round === 1 && shots.stages) { await page.waitForTimeout(1700); await shot(page, `${shots.stages}-stage${s}`); }
+        if (round === 1 && shots.stages) { await page.waitForTimeout(900); await shot(page, `${shots.stages}-stage${s}`); }
       }
       if ((await phase(page)) === 'round') {
         let ans = oracle ? await oracle(page) : null;
@@ -54,8 +54,18 @@ async function playGame(page, { tag, mobile = false, oracle = null, jitterKm = 1
         let ok = await tapLatLon(page, lat, lon, mobile);
         if (!ok) { await page.evaluate(() => window.__triMap.fitWorld(false)); await page.waitForTimeout(100); ok = await tapLatLon(page, lat, lon, mobile); }
         await page.waitForTimeout(150);
-        const pinned = await page.evaluate(() => !!window.__tri.myPin);
-        if (!pinned) throw new Error(`${tag}: pin drop failed in round ${round}`);
+        let pinned = await page.evaluate(() => !!window.__tri.myPin);
+        // a reconnect snapshot (the private scenario drops the guest's socket mid-round) can wipe a fresh
+        // pin, exactly as for a real player — who would simply tap again
+        for (let tries = 0; !pinned && tries < 4 && (await phase(page)) === 'round'; tries++) {
+          await page.waitForTimeout(400);
+          await page.evaluate(() => window.__triMap.fitWorld(false));
+          await page.waitForTimeout(100);
+          await tapLatLon(page, lat, lon, mobile);
+          await page.waitForTimeout(150);
+          pinned = await page.evaluate(() => !!window.__tri.myPin);
+        }
+        if (!pinned && (await phase(page)) === 'round') throw new Error(`${tag}: pin drop failed in round ${round}`);
         if (round === 1 && shots.pin) await shot(page, shots.pin);
         if ((await phase(page)) === 'round') {
           const btn = page.locator('#btn-lock');
@@ -72,7 +82,7 @@ async function playGame(page, { tag, mobile = false, oracle = null, jitterKm = 1
     }
     const p2 = await waitPhase(page, ['reveal', 'over'], 90000);
     if (p2 === 'over') break;
-    if (shots.reveal && round === (shots.revealRound || 1)) { await page.waitForTimeout(2600); await shot(page, shots.reveal); }
+    if (shots.reveal && round === (shots.revealRound || 1)) { await page.waitForTimeout(1200); await shot(page, shots.reveal); }
     const p3 = await waitPhase(page, ['standings', 'over'], 60000);
     if (p3 === 'over') break;
     await page.waitForTimeout(500);
