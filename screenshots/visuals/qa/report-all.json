@@ -1,0 +1,818 @@
+{
+ "p412": {
+  "errs": [],
+  "shots": {
+   "01-title": {
+    "sw": 412,
+    "sh": 915,
+    "W": 412,
+    "H": 915,
+    "over": [],
+    "overlap": [],
+    "clip": [
+     "#btn-play.btn.btn-primary.btn-xl<button> \"PLAYlive · 20 players\" 722>344"
+    ],
+    "lock": {
+     "rect": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "visible": false,
+     "hitOk": false,
+     "hit": "#scr-title.screen.active<section>",
+     "disabled": true,
+     "text": "Drop a pin×2.0"
+    },
+    "phase": null
+   },
+   "02-round-pin": {
+    "sw": 412,
+    "sh": 915,
+    "W": 412,
+    "H": 915,
+    "over": [
+     "#board.board.card.brackets.glass<aside> 6,936,406,1359"
+    ],
+    "overlap": [],
+    "clip": [],
+    "lock": {
+     "rect": [
+      16,
+      825,
+      396,
+      887
+     ],
+     "visible": true,
+     "hitOk": true,
+     "hit": ".lock-txt<span>",
+     "disabled": false,
+     "text": "Lock in×1.0"
+    },
+    "phase": "round"
+   },
+   "03-reveal": {
+    "sw": 412,
+    "sh": 915,
+    "W": 412,
+    "H": 915,
+    "over": [],
+    "overlap": [
+     "#result.result.card.brackets<div> X #board.board.card.brackets.glass.open<aside> 380x129"
+    ],
+    "clip": [],
+    "lock": {
+     "rect": [
+      16,
+      849,
+      396,
+      911
+     ],
+     "visible": false,
+     "hitOk": false,
+     "hit": ".nm<span>",
+     "disabled": true,
+     "text": "Locked in×1.0"
+    },
+    "phase": "standings"
+   },
+   "04-standings": {
+    "sw": 412,
+    "sh": 915,
+    "W": 412,
+    "H": 915,
+    "over": [
+     "#board.board.card.brackets.glass<aside> 6,936,406,1361"
+    ],
+    "overlap": [],
+    "clip": [],
+    "lock": {
+     "rect": [
+      16,
+      849,
+      396,
+      911
+     ],
+     "visible": false,
+     "hitOk": true,
+     "hit": ".lock-txt<span>",
+     "disabled": true,
+     "text": "Get ready×2.0"
+    },
+    "phase": "intro"
+   }
+  }
+ },
+ "p360": {
+  "errs": [],
+  "shots": {
+   "01-title": {
+    "sw": 360,
+    "sh": 740,
+    "W": 360,
+    "H": 740,
+    "over": [],
+    "overlap": [],
+    "clip": [
+     "#btn-play.btn.btn-primary.btn-xl<button> \"PLAYlive · 20 players\" 613>292"
+    ],
+    "lock": {
+     "rect": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "visible": false,
+     "hitOk": false,
+     "hit": "#scr-title.screen.active<section>",
+     "disabled": true,
+     "text": "Drop a pin×2.0"
+    },
+    "phase": null
+   },
+   "02-round-pin": {
+    "sw": 360,
+    "sh": 740,
+    "W": 360,
+    "H": 740,
+    "over": [
+     "#board.board.card.brackets.glass<aside> 6,761,354,1184"
+    ],
+    "overlap": [],
+    "clip": [],
+    "lock": {
+     "rect": [
+      16,
+      650,
+      344,
+      712
+     ],
+     "visible": true,
+     "hitOk": true,
+     "hit": ".lock-txt<span>",
+     "disabled": false,
+     "text": "Lock in×1.0"
+    },
+    "phase": "round"
+   },
+   "03-reveal": {
+    "sw": 360,
+    "sh": 740,
+    "W": 360,
+    "H": 740,
+    "over": [],
+    "overlap": [
+     "#btn-world.btn.btn-icon.world-btn<button> X #board.board.card.brackets.glass.open<aside> 34x34",
+     "#result.result.card.brackets<div> X #board.board.card.brackets.glass.open<aside> 328x145",
+     "#mini-board.mini-board<div> X #board.board.card.brackets.glass.open<aside> 284x26"
+    ],
+    "clip": [],
+    "lock": {
+     "rect": [
+      16,
+      674,
+      344,
+      736
+     ],
+     "visible": false,
+     "hitOk": false,
+     "hit": ".nm<span>",
+     "disabled": true,
+     "text": "Locked in×1.0"
+    },
+    "phase": "standings"
+   },
+   "04-standings": {
+    "sw": 360,
+    "sh": 740,
+    "W": 360,
+    "H": 740,
+    "over": [
+     "#board.board.card.brackets.glass<aside> 6,761,354,1186"
+    ],
+    "overlap": [],
+    "clip": [],
+    "lock": {
+     "rect": [
+      16,
+      674,
+      344,
+      736
+     ],
+     "visible": false,
+     "hitOk": true,
+     "hit": ".lock-txt<span>",
+     "disabled": true,
+     "text": "Drop a pin×2.0"
+    },
+    "phase": "round"
+   },
+   "05-over": {
+    "sw": 360,
+    "sh": 740,
+    "W": 360,
+    "H": 740,
+    "over": [
+     ".over.card.brackets.glass<div> 16,16,344,751"
+    ],
+    "overlap": [],
+    "clip": [
+     ".nm<div> \"ravi1998 🤖\" 92>88",
+     ".blk<div> \"2\" 92>88",
+     ".blk<div> \"1\" 106>101",
+     ".blk<div> \"3\" 92>88",
+     "#btn-again.btn.btn-primary.btn-xl<button> \"Play again\" 482>229"
+    ],
+    "lock": {
+     "rect": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "visible": false,
+     "hitOk": false,
+     "hit": "#scr-over.screen.active<section>",
+     "disabled": true,
+     "text": "Locked in×2.0"
+    },
+    "phase": "over"
+   }
+  }
+ },
+ "t768": {
+  "errs": [],
+  "shots": {
+   "01-title": {
+    "sw": 768,
+    "sh": 1024,
+    "W": 768,
+    "H": 1024,
+    "over": [],
+    "overlap": [],
+    "clip": [
+     "#btn-play.btn.btn-primary.btn-xl<button> \"PLAYlive · 20 players\" 739>352"
+    ],
+    "lock": {
+     "rect": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "visible": false,
+     "hitOk": false,
+     "hit": "#scr-title.screen.active<section>",
+     "disabled": true,
+     "text": "Drop a pin×2.0"
+    },
+    "phase": null
+   },
+   "02-round-pin": {
+    "sw": 768,
+    "sh": 1024,
+    "W": 768,
+    "H": 1024,
+    "over": [
+     "#board.board.card.brackets.glass<aside> 6,1045,762,1461"
+    ],
+    "overlap": [],
+    "clip": [],
+    "lock": {
+     "rect": [
+      16,
+      934,
+      752,
+      996
+     ],
+     "visible": true,
+     "hitOk": true,
+     "hit": ".lock-txt<span>",
+     "disabled": false,
+     "text": "Lock in×1.0"
+    },
+    "phase": "round"
+   },
+   "03-reveal": {
+    "sw": 768,
+    "sh": 1024,
+    "W": 768,
+    "H": 1024,
+    "over": [
+     "#board.board.card.brackets.glass.open<aside> 6,701,762,1089"
+    ],
+    "overlap": [
+     "#btn-world.btn.btn-icon.world-btn<button> X #board.board.card.brackets.glass.open<aside> 34x18",
+     "#result.result.card.brackets<div> X #board.board.card.brackets.glass.open<aside> 736x130",
+     "#mini-board.mini-board<div> X #board.board.card.brackets.glass.open<aside> 692x10"
+    ],
+    "clip": [],
+    "lock": {
+     "rect": [
+      16,
+      958,
+      752,
+      1020
+     ],
+     "visible": false,
+     "hitOk": false,
+     "hit": ".nm<span>",
+     "disabled": true,
+     "text": "Locked in×1.0"
+    },
+    "phase": "standings"
+   },
+   "04-standings": {
+    "sw": 768,
+    "sh": 1024,
+    "W": 768,
+    "H": 1024,
+    "over": [
+     "#board.board.card.brackets.glass<aside> 6,1028,762,1453"
+    ],
+    "overlap": [],
+    "clip": [],
+    "lock": {
+     "rect": [
+      16,
+      958,
+      752,
+      1020
+     ],
+     "visible": false,
+     "hitOk": true,
+     "hit": ".lock-txt<span>",
+     "disabled": true,
+     "text": "Get ready×2.0"
+    },
+    "phase": "intro"
+   }
+  }
+ },
+ "l1024": {
+  "errs": [],
+  "shots": {
+   "01-title": {
+    "sw": 1024,
+    "sh": 768,
+    "W": 1024,
+    "H": 768,
+    "over": [],
+    "overlap": [],
+    "clip": [
+     "#btn-play.btn.btn-primary.btn-xl<button> \"PLAYlive · 20 players\" 739>352"
+    ],
+    "lock": {
+     "rect": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "visible": false,
+     "hitOk": false,
+     "hit": "#scr-title.screen.active<section>",
+     "disabled": true,
+     "text": "Drop a pin×2.0"
+    },
+    "phase": null
+   },
+   "02-round-pin": {
+    "sw": 1024,
+    "sh": 768,
+    "W": 1024,
+    "H": 768,
+    "over": [
+     "#board.board.card.brackets.glass<aside> 1059,64,1369,473"
+    ],
+    "overlap": [],
+    "clip": [
+     ".lbl<span> \"Coast\" 37>32",
+     ".lbl<span> \"Rivers\" 45>32",
+     ".lbl<span> \"Roads\" 37>32",
+     ".lbl<span> \"Names\" 37>32"
+    ],
+    "lock": {
+     "rect": [
+      611,
+      658,
+      901,
+      720
+     ],
+     "visible": true,
+     "hitOk": true,
+     "hit": ".lock-txt<span>",
+     "disabled": false,
+     "text": "Lock in×1.0"
+    },
+    "phase": "round"
+   },
+   "03-reveal": {
+    "sw": 1024,
+    "sh": 768,
+    "W": 1024,
+    "H": 768,
+    "over": [],
+    "overlap": [
+     ".gm-zoom<div> X #result.result.card.brackets<div> 10x82",
+     "#btn-world.btn.btn-icon.world-btn<button> X #result.result.card.brackets<div> 8x38"
+    ],
+    "clip": [
+     ".lbl<span> \"Coast\" 37>32",
+     ".lbl<span> \"Rivers\" 45>32",
+     ".lbl<span> \"Roads\" 37>32",
+     ".lbl<span> \"Names\" 37>32"
+    ],
+    "lock": {
+     "rect": [
+      611,
+      682,
+      901,
+      744
+     ],
+     "visible": false,
+     "hitOk": false,
+     "hit": "#result.result.card.brackets<div>",
+     "disabled": true,
+     "text": "Locked in×1.0"
+    },
+    "phase": "standings"
+   },
+   "04-standings": {
+    "sw": 1024,
+    "sh": 768,
+    "W": 1024,
+    "H": 768,
+    "over": [
+     "#board.board.card.brackets.glass<aside> 1050,64,1360,496"
+    ],
+    "overlap": [],
+    "clip": [
+     ".lbl<span> \"Coast\" 37>32",
+     ".lbl<span> \"Rivers\" 45>32",
+     ".lbl<span> \"Roads\" 37>32",
+     ".lbl<span> \"Names\" 37>32"
+    ],
+    "lock": {
+     "rect": [
+      611,
+      682,
+      901,
+      744
+     ],
+     "visible": false,
+     "hitOk": true,
+     "hit": ".lock-txt<span>",
+     "disabled": true,
+     "text": "Get ready×2.0"
+    },
+    "phase": "intro"
+   }
+  }
+ },
+ "d1280": {
+  "errs": [],
+  "shots": {
+   "01-title": {
+    "sw": 1280,
+    "sh": 720,
+    "W": 1280,
+    "H": 720,
+    "over": [],
+    "overlap": [],
+    "clip": [
+     "#btn-play.btn.btn-primary.btn-xl<button> \"PLAYlive · 20 players\" 739>352"
+    ],
+    "lock": {
+     "rect": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "visible": false,
+     "hitOk": false,
+     "hit": "#scr-title.screen.active<section>",
+     "disabled": true,
+     "text": "Drop a pin×2.0"
+    },
+    "phase": null
+   },
+   "02-round-pin": {
+    "sw": 1280,
+    "sh": 720,
+    "W": 1280,
+    "H": 720,
+    "over": [],
+    "overlap": [],
+    "clip": [
+     ".lbl<span> \"Rivers\" 45>42"
+    ],
+    "lock": {
+     "rect": [
+      601,
+      610,
+      891,
+      672
+     ],
+     "visible": true,
+     "hitOk": true,
+     "hit": ".lock-txt<span>",
+     "disabled": false,
+     "text": "Lock in×1.0"
+    },
+    "phase": "round"
+   },
+   "03-reveal": {
+    "sw": 1280,
+    "sh": 720,
+    "W": 1280,
+    "H": 720,
+    "over": [],
+    "overlap": [
+     ".gm-zoom<div> X #result.result.card.brackets<div> 28x82",
+     "#btn-world.btn.btn-icon.world-btn<button> X #result.result.card.brackets<div> 28x38"
+    ],
+    "clip": [
+     ".lbl<span> \"Rivers\" 45>42"
+    ],
+    "lock": {
+     "rect": [
+      601,
+      634,
+      891,
+      696
+     ],
+     "visible": false,
+     "hitOk": false,
+     "hit": "#result.result.card.brackets<div>",
+     "disabled": true,
+     "text": "Locked in×1.0"
+    },
+    "phase": "standings"
+   },
+   "04-standings": {
+    "sw": 1280,
+    "sh": 720,
+    "W": 1280,
+    "H": 720,
+    "over": [],
+    "overlap": [],
+    "clip": [
+     ".lbl<span> \"Rivers\" 45>42"
+    ],
+    "lock": {
+     "rect": [
+      601,
+      634,
+      891,
+      696
+     ],
+     "visible": false,
+     "hitOk": true,
+     "hit": ".lock-txt<span>",
+     "disabled": true,
+     "text": "Get ready×2.0"
+    },
+    "phase": "intro"
+   },
+   "05-over": {
+    "sw": 1280,
+    "sh": 720,
+    "W": 1280,
+    "H": 720,
+    "over": [
+     ".over.card.brackets.glass<div> 340,16,940,734"
+    ],
+    "overlap": [],
+    "clip": [
+     "#btn-again.btn.btn-primary.btn-xl<button> \"Play again\" 482>229"
+    ],
+    "lock": {
+     "rect": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "visible": false,
+     "hitOk": false,
+     "hit": "#scr-over.screen.active<section>",
+     "disabled": true,
+     "text": "Locked in×2.0"
+    },
+    "phase": "over"
+   }
+  }
+ },
+ "d1920": {
+  "errs": [],
+  "shots": {
+   "01-title": {
+    "sw": 1920,
+    "sh": 1080,
+    "W": 1920,
+    "H": 1080,
+    "over": [],
+    "overlap": [],
+    "clip": [
+     "#btn-play.btn.btn-primary.btn-xl<button> \"PLAYlive · 20 players\" 739>352"
+    ],
+    "lock": {
+     "rect": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "visible": false,
+     "hitOk": false,
+     "hit": "#scr-title.screen.active<section>",
+     "disabled": true,
+     "text": "Drop a pin×2.0"
+    },
+    "phase": null
+   },
+   "02-round-pin": {
+    "sw": 1920,
+    "sh": 1080,
+    "W": 1920,
+    "H": 1080,
+    "over": [],
+    "overlap": [],
+    "clip": [],
+    "lock": {
+     "rect": [
+      1049,
+      970,
+      1339,
+      1032
+     ],
+     "visible": true,
+     "hitOk": true,
+     "hit": ".lock-txt<span>",
+     "disabled": false,
+     "text": "Lock in×1.0"
+    },
+    "phase": "round"
+   },
+   "03-reveal": {
+    "sw": 1920,
+    "sh": 1080,
+    "W": 1920,
+    "H": 1080,
+    "over": [],
+    "overlap": [],
+    "clip": [],
+    "lock": {
+     "rect": [
+      1049,
+      994,
+      1339,
+      1056
+     ],
+     "visible": false,
+     "hitOk": false,
+     "hit": "#result.result.card.brackets<div>",
+     "disabled": true,
+     "text": "Locked in×1.0"
+    },
+    "phase": "standings"
+   },
+   "04-standings": {
+    "sw": 1920,
+    "sh": 1080,
+    "W": 1920,
+    "H": 1080,
+    "over": [],
+    "overlap": [],
+    "clip": [],
+    "lock": {
+     "rect": [
+      1049,
+      994,
+      1339,
+      1056
+     ],
+     "visible": false,
+     "hitOk": true,
+     "hit": ".lock-txt<span>",
+     "disabled": true,
+     "text": "Get ready×2.0"
+    },
+    "phase": "intro"
+   }
+  }
+ },
+ "lp844": {
+  "errs": [],
+  "shots": {
+   "01-title": {
+    "sw": 844,
+    "sh": 390,
+    "W": 844,
+    "H": 390,
+    "over": [],
+    "overlap": [],
+    "clip": [
+     "#btn-play.btn.btn-primary.btn-xl<button> \"PLAYlive · 20 players\" 739>352"
+    ],
+    "lock": {
+     "rect": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "visible": false,
+     "hitOk": false,
+     "hit": "#scr-title.screen.active<section>",
+     "disabled": true,
+     "text": "Drop a pin×2.0"
+    },
+    "phase": null
+   },
+   "02-round-pin": {
+    "sw": 844,
+    "sh": 390,
+    "W": 844,
+    "H": 390,
+    "over": [
+     "#board.board.card.brackets.glass<aside> 879,64,1189,344"
+    ],
+    "overlap": [],
+    "clip": [],
+    "lock": {
+     "rect": [
+      400,
+      280,
+      690,
+      342
+     ],
+     "visible": true,
+     "hitOk": true,
+     "hit": ".lock-txt<span>",
+     "disabled": false,
+     "text": "Lock in×1.0"
+    },
+    "phase": "round"
+   },
+   "03-reveal": {
+    "sw": 844,
+    "sh": 390,
+    "W": 844,
+    "H": 390,
+    "over": [],
+    "overlap": [
+     ".gm-zoom<div> X #board.board.card.brackets.glass.open<aside> 38x82",
+     "#btn-world.btn.btn-icon.world-btn<button> X #board.board.card.brackets.glass.open<aside> 38x38",
+     "#result.result.card.brackets<div> X #board.board.card.brackets.glass.open<aside> 243x151"
+    ],
+    "clip": [
+     "#answer-tag.answer-tag<div> \"📍 Lake Maracaibo\" 228>186"
+    ],
+    "lock": {
+     "rect": [
+      400,
+      304,
+      690,
+      366
+     ],
+     "visible": false,
+     "hitOk": false,
+     "hit": ".row<li>",
+     "disabled": true,
+     "text": "Locked in×1.0"
+    },
+    "phase": "standings"
+   },
+   "04-standings": {
+    "sw": 844,
+    "sh": 390,
+    "W": 844,
+    "H": 390,
+    "over": [
+     "#board.board.card.brackets.glass<aside> 877,64,1187,344"
+    ],
+    "overlap": [],
+    "clip": [],
+    "lock": {
+     "rect": [
+      400,
+      304,
+      690,
+      366
+     ],
+     "visible": false,
+     "hitOk": true,
+     "hit": ".lock-txt<span>",
+     "disabled": true,
+     "text": "Get ready×2.0"
+    },
+    "phase": "intro"
+   }
+  }
+ }
+}

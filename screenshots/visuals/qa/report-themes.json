@@ -1,0 +1,122 @@
+{
+ "th-atlas-390": {
+  "errs": [],
+  "shots": {
+   "01-title": {
+    "sw": 390,
+    "sh": 844,
+    "W": 390,
+    "H": 844,
+    "over": [],
+    "overlap": [],
+    "clip": [
+     "#btn-play.btn.btn-primary.btn-xl<button> \"PLAYlive · 20 players\" 676>322"
+    ],
+    "lock": {
+     "rect": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "visible": false,
+     "hitOk": false,
+     "hit": "#scr-title.screen.active<section>",
+     "disabled": true,
+     "text": "Drop a pin×2.0"
+    },
+    "phase": null
+   }
+  }
+ },
+ "th-atlas-1440": {
+  "errs": [],
+  "shots": {
+   "01-title": {
+    "sw": 1440,
+    "sh": 900,
+    "W": 1440,
+    "H": 900,
+    "over": [],
+    "overlap": [],
+    "clip": [
+     "#btn-play.btn.btn-primary.btn-xl<button> \"PLAYlive · 20 players\" 739>352"
+    ],
+    "lock": {
+     "rect": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "visible": false,
+     "hitOk": false,
+     "hit": "#scr-title.screen.active<section>",
+     "disabled": true,
+     "text": "Drop a pin×2.0"
+    },
+    "phase": null
+   }
+  }
+ },
+ "th-arcade-390": {
+  "errs": [],
+  "shots": {
+   "01-title": {
+    "sw": 390,
+    "sh": 844,
+    "W": 390,
+    "H": 844,
+    "over": [],
+    "overlap": [],
+    "clip": [
+     "#btn-play.btn.btn-primary.btn-xl<button> \"PLAYlive · 20 players\" 676>322"
+    ],
+    "lock": {
+     "rect": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "visible": false,
+     "hitOk": false,
+     "hit": "#scr-title.screen.active<section>",
+     "disabled": true,
+     "text": "Drop a pin×2.0"
+    },
+    "phase": null
+   }
+  }
+ },
+ "th-arcade-1440": {
+  "errs": [],
+  "shots": {
+   "01-title": {
+    "sw": 1440,
+    "sh": 900,
+    "W": 1440,
+    "H": 900,
+    "over": [],
+    "overlap": [],
+    "clip": [
+     "#btn-play.btn.btn-primary.btn-xl<button> \"PLAYlive · 20 players\" 739>352"
+    ],
+    "lock": {
+     "rect": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "visible": false,
+     "hitOk": false,
+     "hit": "#scr-title.screen.active<section>",
+     "disabled": true,
+     "text": "Drop a pin×2.0"
+    },
+    "phase": null
+   }
+  }
+ }
+}
