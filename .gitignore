@@ -3,3 +3,4 @@ data/raw/
 tmp/
 test-results/
 *.log
+.claude/

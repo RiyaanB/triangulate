@@ -27,6 +27,7 @@ export function toast(text, ms = 2200) {
 
 // ---- banner (big centred text)
 export function banner(title, sub = '', { ms = 1600, color, cls = '' } = {}) {
+  document.querySelectorAll('.banner').forEach((b) => b.remove()); // never stack banners
   const b = h('div', { class: 'banner ' + cls }, h('div', { class: 'banner-inner' }, h('h1', { style: color ? { color } : {} }, title), sub ? h('p', {}, sub) : null));
   document.body.append(b);
   setTimeout(() => { b.classList.add('out'); setTimeout(() => b.remove(), 400); }, ms);
@@ -56,7 +57,7 @@ export function makeRing(el) {
 export function countUp(el, to, { from = 0, ms = 900, prefix = '', suffix = '' } = {}) {
   const t0 = performance.now();
   const step = (t) => {
-    const f = Math.min(1, (t - t0) / ms);
+    const f = Math.max(0, Math.min(1, (t - t0) / ms));
     const e = 1 - Math.pow(1 - f, 3);
     el.textContent = prefix + fmt(from + (to - from) * e) + suffix;
     if (f < 1) requestAnimationFrame(step);
