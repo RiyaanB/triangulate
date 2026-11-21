@@ -70,6 +70,10 @@ or worse and a few are sharp, so a decent human can win. Bots are always tagged 
 
 **Scoring:** `round(5000 · e^(−d/1500 km) · stageMultiplier)`. An unlocked pin at time-out counts at ×1.0.
 
+## Static version (GitHub Pages, no server)
+
+`npm run build:static` writes a server-free site to `docs/`. It contains the client, the shared game engine and all clue packs (233 clues). **PLAY** runs a full 20-player match against in-browser bots (the same room engine the server uses, running locally), and **Daily solo** works the same as before. Private rooms need the Node server, so they're hidden in the static build. Preview it locally with `npm run serve:static` (http://localhost:8810). For GitHub Pages, publish from the `main` branch, `/docs` folder. Note that answers in the static build are only lightly obfuscated, as in solo mode.
+
 ## Data & license
 
 All map data is from [Natural Earth](https://www.naturalearthdata.com/) (public domain): 10m land and
@@ -82,3 +86,5 @@ Arabic, Persian, Urdu, Devanagari, Bengali, Chinese, Japanese, Korean). For coun
 Latin, or not available (Thai, Khmer, Sinhala, Amharic, …), names are shown **transliterated into a
 foreign script** (e.g. Dallas in Chinese characters) and marked "transliterated, not local". Latin names
 are never shown.
+
+Code: MIT (see LICENSE). Map data: Natural Earth, public domain.

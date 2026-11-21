@@ -34,13 +34,21 @@ function show(id) {
   if (id === 'scr-game' && map) requestAnimationFrame(() => map.resize());
 }
 
+const STATIC = !!window.TRI_STATIC;
+
 // ------------------------------------------------------------------ connecting
 function connect(kind, extra = {}) {
   sfx.unlock();
   disconnect();
   S.mode = kind === 'solo' ? 'solo' : kind;
   resetGameState();
-  if (kind === 'solo') {
+  if (STATIC && kind !== 'solo') {
+    // static build (GitHub Pages): full 20-player match against in-browser bots, no server
+    S.conn = new LocalConnection({ name: nick(), seed: 'match-' + Math.random(), speed: SPEED, mode: 'public', config: { lobbyMs: 5000 } });
+    S.conn.onmessage = onMsg;
+    S.conn.ready.catch((e) => { toast('Could not load clue pack: ' + e.message); show('scr-title'); });
+    setConn('');
+  } else if (kind === 'solo') {
     const daily = extra.practice ? 'practice-' + Math.random() : 'daily-' + new Date().toISOString().slice(0, 10);
     S.conn = new LocalConnection({ name: nick(), seed: daily, speed: SPEED });
     S.conn.onmessage = onMsg;
@@ -468,5 +476,6 @@ window.addEventListener('DOMContentLoaded', async () => {
   requestAnimationFrame(tick);
   const room = params.get('room');
   if (room) { $('#private-panel').classList.remove('hidden'); $('#code-in').value = room.toUpperCase(); }
+  if (STATIC) { $('#btn-private').classList.add('hidden'); $('#private-panel').classList.add('hidden'); }
   if (params.get('auto') === 'solo') connect('solo');
 });
