@@ -1,28 +1,42 @@
 // Authoritative TRIANGULATE room engine. Transport-agnostic: runs on the Node server (WebSocket)
-// and in the browser for SOLO mode. All answers stay inside this object until reveal.
+// and in the browser for SOLO / static mode. All answers stay inside this object until reveal.
 import { Scheduler } from '../kit/scheduler.js';
 import { makeRng } from '../kit/rng.js';
 import { distanceKm } from '../kit/geo.js';
 import { makeBot } from '../kit/bots.js';
-import { makeConfig, scoreFor, elimCount, isElimRound, planBotGuess, diffWeights } from './rules.js';
+import {
+  makeConfig, elimCount, isElimRound, planBotGuess, pickClue, roundPoints, botSkill, clueRating, CLOSE_CALL_PTS,
+} from './rules.js';
 
+const LOBBY_DROP_GRACE_MS = 20000;
 let uid = 0;
 const newId = (p) => p + (++uid).toString(36) + Math.floor(Math.random() * 1296).toString(36);
+/** Unguessable session token (128 bit). Works in browsers and Node >= 19 (globalThis.crypto). */
+export function newToken() {
+  const b = new Uint8Array(16);
+  if (globalThis.crypto?.getRandomValues) globalThis.crypto.getRandomValues(b);
+  else for (let i = 0; i < 16; i++) b[i] = Math.floor(Math.random() * 256);
+  return [...b].map((x) => x.toString(16).padStart(2, '0')).join('');
+}
 
 export class TriangulateRoom {
   /**
    * @param {object} o
    * @param {string} o.code       room code
    * @param {'public'|'private'|'solo'} o.mode
-   * @param {object} o.clues      { list(): meta[], load(id): Promise<clue> }  meta = {id, lat, lon, name, cc, diff, km}
+   * @param {object} o.clues      { list(): meta[], load(id): Promise<clue> }  meta = {id, lat, lon, name, cc, diff, rating, km}
    * @param {(pid:string, msg:object)=>void} o.send
    * @param {number} [o.speed]    time multiplier (tests)
+   * @param {string|number} [o.seed] RNG seed. Clue order uses its own stream (seed + ':clues') so a daily
+   *                              seed gives every player the same clues whatever the bots/eliminations do.
    * @param {object} [o.config]   overrides
    */
   constructor({ code, mode = 'public', clues, send, speed = 1, seed, config = {}, onEmpty = () => {}, log = () => {} }) {
     this.code = code; this.mode = mode; this.clues = clues; this._send = send;
     this.cfg = makeConfig(mode, config);
-    this.rng = makeRng(seed ?? undefined);
+    const s = seed ?? Math.floor(Math.random() * 2 ** 32);
+    this.rng = makeRng(s);
+    this.clueRng = makeRng(String(s) + ':clues');
     this.sched = new Scheduler({ speed });
     this.onEmpty = onEmpty; this.log = log;
     this.players = new Map();
@@ -34,6 +48,8 @@ export class TriangulateRoom {
     this.phaseEnd = 0; // virtual time
     this.disposed = false;
     this.games = 0;
+    this.uid = newToken().slice(0, 8);
+    this.clueLog = []; // [{round, id, rating}] of the current game (tests + daily share)
     this._playersDirty = false;
   }
 
@@ -53,9 +69,10 @@ export class TriangulateRoom {
     return {
       id: p.id, name: p.name, bot: !!p.bot, alive: p.alive, total: p.total, last: p.last, conn: p.bot ? true : p.conn,
       lock: this.phase === 'round' ? p.lock : 0, elim: p.elimRound || 0, spec: !!p.spec, host: p.id === this.hostId,
+      streak: p.streak || 0, ready: !!p.ready,
     };
   }
-  playersMsg() { return { t: 'players', players: this.list.map((p) => this.publicPlayer(p)) }; }
+  playersMsg() { return { t: 'players', players: this.list.map((p) => this.publicPlayer(p)), host: this.hostId }; }
   markPlayers() {
     if (this._playersDirty) return;
     this._playersDirty = true;
@@ -68,22 +85,35 @@ export class TriangulateRoom {
       (!this.phaseEnd || this.ms(this.phaseEnd) > 2500);
   }
 
-  addHuman({ name, token, preSend }) {
+  /** Private rooms accept late joiners (they spectate until the next game) up to the player cap. */
+  canJoinPrivate() {
+    return !this.disposed && this.humans().filter((p) => !p.left).length < this.cfg.maxPlayers;
+  }
+
+  addHuman({ name, preSend }) {
+    const lobby = this.phase === 'lobby';
     const p = {
-      id: newId('p'), token: token || newId('t') + newId('t'), name: sanitizeName(name), bot: false, conn: true,
-      alive: this.phase === 'lobby', spec: this.phase !== 'lobby', total: 0, last: 0, lock: 0, guess: null,
-      elimRound: 0, join: ++this.joinSeq, ready: false,
+      id: newId('p'), token: newToken(), name: sanitizeName(name), bot: false, conn: true,
+      alive: lobby, spec: !lobby, total: 0, last: 0, lock: 0, guess: null, streak: 0,
+      elimRound: 0, join: ++this.joinSeq, ready: false, hist: [],
     };
     // bots make way for humans: every human joining a public lobby replaces one bot
-    if (this.mode === 'public' && this.phase === 'lobby') this.removeOneBot();
+    if (this.mode === 'public' && lobby) this.removeOneBot();
     this.players.set(p.id, p);
     if (preSend) preSend(p.id);
-    if (!this.hostId || !this.players.get(this.hostId)?.conn) this.hostId = p.id;
-    this.log(`[${this.code}] + ${p.name} (${this.connectedHumans().length} humans)`);
+    if (!this.hostId || !this.players.get(this.hostId)?.conn) this.setHost(p.id);
+    this.log(`[${this.code}] + ${p.name}${p.spec ? ' (spectating)' : ''} (${this.connectedHumans().length} humans)`);
     this.sendWelcome(p);
     this.markPlayers();
-    if (this.phase === 'lobby') this.onLobbyJoin();
+    if (lobby) this.onLobbyJoin();
     return p;
+  }
+
+  setHost(id) {
+    if (this.hostId === id) return;
+    this.hostId = id;
+    if (this.phase === 'lobby' && this.mode !== 'solo') this.broadcastLobby();
+    this.markPlayers();
   }
 
   sendWelcome(p) {
@@ -91,13 +121,23 @@ export class TriangulateRoom {
     this._send(p.id, this.snapshot(p));
   }
 
+  findByToken(token) {
+    if (typeof token !== 'string' || token.length < 8) return null;
+    return this.list.find((x) => !x.bot && x.token === token && !x.left) || null;
+  }
+
   reconnect(token) {
-    const p = this.list.find((x) => !x.bot && x.token === token && !x.left);
+    const p = this.findByToken(token);
     if (!p) return null;
     p.conn = true;
-    this.sched.cancel('empty');
+    clearTimeout(p._dropTimer);
+    clearTimeout(this._emptyTimer);
+    // host migration: an orphaned room gets its returning player as host
+    if (!this.hostId || !this.players.get(this.hostId)?.conn) this.setHost(p.id);
+    this.log(`[${this.code}] ~ ${p.name} reconnected`);
     this.sendWelcome(p);
     this.markPlayers();
+    if (this.phase === 'lobby') this.onLobbyJoin(); // restart a public countdown that stopped while empty
     return p;
   }
 
@@ -105,15 +145,32 @@ export class TriangulateRoom {
     const p = this.players.get(pid);
     if (!p) return;
     p.conn = false;
-    if (leave) p.left = true;
-    if (this.phase === 'lobby' || (leave && p.spec)) this.players.delete(pid);
-    if (this.hostId === pid) this.hostId = this.connectedHumans()[0]?.id || null;
-    this.log(`[${this.code}] - ${p.name} (${this.connectedHumans().length} humans left)`);
+    if (leave) {
+      p.left = true;
+      if (this.phase !== 'lobby' && this.phase !== 'over' && p.alive) { p.alive = false; p.elimRound = Math.max(1, this.round); p.forfeit = true; }
+    }
+    if ((this.phase === 'lobby' && leave) || (leave && p.spec)) this.players.delete(pid);
+    else if (this.phase === 'lobby') {
+      // network blip in the lobby: keep the seat (and host role) for a while so a reconnect resumes it
+      clearTimeout(p._dropTimer);
+      p._dropTimer = setTimeout(() => {
+        if (!p.conn && this.phase === 'lobby' && this.players.get(pid) === p) { this.players.delete(pid); this.markPlayers(); }
+      }, LOBBY_DROP_GRACE_MS);
+      p._dropTimer.unref?.();
+    }
+    // host migration: hand the room to the longest-present connected human
+    if (this.hostId === pid) {
+      const next = this.connectedHumans().sort((a, b) => a.join - b.join)[0];
+      this.hostId = null;
+      if (next) this.setHost(next.id);
+    }
+    this.log(`[${this.code}] - ${p.name}${leave ? ' left' : ' dropped'} (${this.connectedHumans().length} humans left)`);
     this.markPlayers();
     if (!this.connectedHumans().length) {
-      if (this.phase === 'lobby') { this.sched.clear(); this.removeAllBots(); }
+      if (this.phase === 'lobby') { this.sched.clear(); this.removeAllBots(); this.setPhase('lobby'); }
       this.onEmpty(this);
     } else if (this.phase === 'round') this.checkAllLocked();
+    else if (this.phase === 'over') this.checkAllReady();
   }
 
   removeOneBot() {
@@ -124,7 +181,8 @@ export class TriangulateRoom {
   addBot() {
     const taken = new Set(this.list.map((p) => p.name));
     const b = makeBot(this.rng, newId('b'), taken);
-    Object.assign(b, { alive: true, total: 0, last: 0, lock: 0, guess: null, elimRound: 0, join: ++this.joinSeq });
+    b.profile.skill = botSkill(this.rng);
+    Object.assign(b, { alive: true, total: 0, last: 0, lock: 0, guess: null, streak: 0, elimRound: 0, join: ++this.joinSeq });
     this.players.set(b.id, b);
     this.markPlayers();
     return b;
@@ -164,11 +222,12 @@ export class TriangulateRoom {
   resetForNewGame() {
     for (const p of this.list) {
       if (p.bot || !p.conn) { this.players.delete(p.id); continue; }
-      Object.assign(p, { alive: true, spec: false, total: 0, last: 0, lock: 0, guess: null, elimRound: 0, ready: false });
+      Object.assign(p, { alive: true, spec: false, total: 0, last: 0, lock: 0, guess: null, streak: 0, elimRound: 0, ready: false, hist: [], forfeit: false });
     }
-    this.round = 0; this.used.clear(); this._soloStarted = false;
+    this.round = 0; this.used.clear(); this._soloStarted = false; this.clueLog = []; this._loadFails = 0;
     this.setPhase('lobby');
     this.reveal = null; this.ranking = null; this.clue = null;
+    if (!this.players.get(this.hostId)?.conn) { this.hostId = null; const h = this.connectedHumans().sort((a, b) => a.join - b.join)[0]; if (h) this.hostId = h.id; }
   }
 
   backToLobby(quick = false) {
@@ -183,7 +242,15 @@ export class TriangulateRoom {
   // ------------------------------------------------------------ game flow
   beginGame() {
     if (this.disposed || this.phase !== 'lobby') return;
+    if (this.draining) { // server is restarting: don't start new games, and say so
+      this.setPhase('lobby'); this.broadcastLobby();
+      this.broadcast({ t: 'server', code: 'restarting', msg: 'Server is restarting — new games start again in a moment.' });
+      return;
+    }
     this.sched.cancel('lobby');
+    // humans who dropped in the lobby and never came back don't get a seat in the game
+    for (const p of this.list) if (!p.bot && !p.conn) { clearTimeout(p._dropTimer); this.players.delete(p.id); }
+    if (!this.connectedHumans().length) { this.setPhase('lobby'); return; }
     if (this.cfg.fillBots) {
       const target = this.mode === 'private' ? Math.max(8, this.list.length) : this.cfg.maxPlayers;
       while (this.list.length < target) this.addBot();
@@ -194,13 +261,7 @@ export class TriangulateRoom {
   }
 
   pickClue() {
-    const all = this.clues.list();
-    const w = diffWeights(this.round, this.cfg.rounds);
-    let pool = all.filter((c) => !this.used.has(c.id));
-    if (!pool.length) { this.used.clear(); pool = all; }
-    const d = this.rng.weighted(w) + 1;
-    const byDiff = pool.filter((c) => c.diff === d);
-    const meta = this.rng.pick(byDiff.length ? byDiff : pool);
+    const meta = pickClue(this.clueRng, this.clues.list(), this.used, this.round, this.cfg.rounds);
     this.used.add(meta.id);
     return meta;
   }
@@ -212,26 +273,35 @@ export class TriangulateRoom {
     for (const p of this.list) { p.lock = 0; p.guess = null; p.plan = null; p.last = 0; }
     this.setPhase('intro', this.cfg.introMs);
     const introEnd = this.phaseEnd;
-    this.broadcast({ t: 'intro', round: n, rounds: this.cfg.rounds, ms: this.ms(introEnd), km: meta.km, elimAfter: isElimRound(this.cfg, n) });
+    this.broadcast({ t: 'intro', round: n, rounds: this.cfg.rounds, ms: this.ms(introEnd), km: meta.km, elimAfter: isElimRound(this.cfg, n), cut: this.cutPreview(n) });
     this.markPlayers();
     let clue;
     try { clue = await this.clues.load(meta.id); } catch (e) {
       this.log('clue load failed', meta.id, e.message);
-      this.used.add(meta.id);
+      if (this.disposed) return;
+      this._loadFails = (this._loadFails || 0) + 1;
+      if (this._loadFails > 5) { this.log(`[${this.code}] giving up: clue source failing`); this.gameOver(); return; }
       return this.startRound(n);
     }
-    if (this.disposed) return;
+    if (this.disposed || this.round !== n || this.phase !== 'intro') return;
+    this._loadFails = 0;
     this.clue = { meta, data: clue };
+    this.clueLog.push({ round: n, id: meta.id, rating: clueRating(meta) });
     this.sched.after(Math.max(0, introEnd - this.sched.vnow()), () => this.beginStages(), 'phase');
   }
+
+  /** How many players will be cut after round n (0 if none) — shown in the intro banner. */
+  cutPreview(n) { return isElimRound(this.cfg, n) ? elimCount(this.cfg, this.alive().length) : 0; }
 
   beginStages() {
     const c = this.cfg;
     this.setPhase('round', c.roundMs);
     this.roundStart = this.sched.vnow();
     this.stage = 1;
+    this._endingEarly = false;
+    const m = this.clue.meta;
     for (const p of this.alive()) if (p.bot) {
-      p.plan = planBotGuess(this.rng, p.profile, { lat: this.clue.meta.lat, lon: this.clue.meta.lon, diff: this.clue.meta.diff }, c);
+      p.plan = planBotGuess(this.rng, p.profile, { lat: m.lat, lon: m.lon, diff: m.diff, rating: m.rating, km: m.km }, c);
       this.sched.after(p.plan.lockAt, () => this.botLock(p), 'bots');
     }
     this.broadcast(this.roundMsg());
@@ -244,6 +314,7 @@ export class TriangulateRoom {
     }
     this.sched.after(c.roundMs, () => this.endRound(), 'phase');
     this.markPlayers();
+    this.checkAllLocked(); // e.g. every human is a spectator or disconnected
   }
 
   roundMsg() {
@@ -273,14 +344,28 @@ export class TriangulateRoom {
 
   checkAllLocked() {
     if (this.phase !== 'round' || this._endingEarly) return;
-    const hs = this.alive().filter((p) => !p.bot && p.conn);
-    if (!hs.length || hs.some((p) => !p.lock)) return;
-    // everyone human has locked: wrap up quickly; bots keep their planned outcome
+    // wait for every living human who hasn't left — connected or not (a blip must not cut the round short)
+    const hs = this.alive().filter((p) => !p.bot && !p.left);
+    if (hs.some((p) => !p.lock)) return;
+    // nobody left to wait for (all humans locked, or none alive+connected): wrap up quickly.
+    // Bots keep their planned outcome; with no living humans the round still plays out briefly.
+    const wait = hs.length ? 1400 : Math.min(6000, this.cfg.roundMs);
     this._endingEarly = true;
     this.sched.cancel('phase');
     this.sched.cancel('bots');
-    this.sched.after(1400, () => this.endRound(), 'phase');
-    this.broadcast({ t: 'ending', ms: this.ms(this.sched.vnow() + 1400) });
+    // bots that would have locked during the remaining time lock now (keeps lock icons consistent)
+    for (const p of this.alive()) if (p.bot && !p.lock && p.plan) this.sched.after(Math.min(wait - 200, 300 + this.rng() * (wait - 500)), () => this.botLock(p), 'bots');
+    if (!hs.length) {
+      // spectators-only room: still reveal stages quickly so watchers see the whole clue
+      for (let s = this.stage + 1; s <= 4; s++) {
+        this.sched.after(((s - this.stage) / (5 - this.stage)) * (wait - 400), () => {
+          this.stage = s; this.broadcast({ t: 'stage', i: s, data: this.stageData(s), ms: this.ms(this.phaseEnd) });
+        }, 'phase');
+      }
+    }
+    this.sched.after(wait, () => this.endRound(), 'phase');
+    this.setPhase('round', wait);
+    this.broadcast({ t: 'ending', ms: this.ms(this.phaseEnd) });
   }
 
   endRound() {
@@ -292,15 +377,20 @@ export class TriangulateRoom {
     for (const p of this.alive()) {
       if (p.bot && !p.lock && p.plan) { p.lock = p.plan.stage; p.guess = { lat: p.plan.lat, lon: p.plan.lon }; }
       if (!p.bot && p.guess && !p.lock) p.lock = 4; // un-locked pin counts at stage 4
-      let pts = 0, d = null;
-      if (p.guess) { d = distanceKm(p.guess.lat, p.guess.lon, meta.lat, meta.lon); pts = scoreFor(d, p.lock); }
-      p.last = pts; p.total += pts;
-      results.push({ id: p.id, lat: p.guess?.lat ?? null, lon: p.guess?.lon ?? null, d: d == null ? null : Math.round(d), stage: p.lock || 0, pts });
+      let d = null;
+      if (p.guess) d = distanceKm(p.guess.lat, p.guess.lon, meta.lat, meta.lon);
+      const r = roundPoints(d, p.lock, meta.km, p.streak || 0);
+      p.last = r.pts; p.total += r.pts; p.streak = r.streak;
+      if (!p.bot) (p.hist ||= [])[this.round - 1] = { d: d == null ? null : Math.round(d), bull: r.bull, stage: p.lock || 0, pts: r.pts };
+      results.push({
+        id: p.id, lat: p.guess?.lat ?? null, lon: p.guess?.lon ?? null, d: d == null ? null : Math.round(d),
+        stage: p.lock || 0, pts: r.pts, base: r.base, bonus: r.bonus, bull: r.bull, streak: r.streak,
+      });
     }
     results.sort((a, b) => b.pts - a.pts);
     this.reveal = {
       t: 'reveal', round: this.round, rounds: this.cfg.rounds,
-      answer: { lat: meta.lat, lon: meta.lon, name: meta.name, cc: meta.cc, km: meta.km },
+      answer: { lat: meta.lat, lon: meta.lon, name: meta.name, cc: meta.cc, km: meta.km, rating: clueRating(meta) },
       results,
     };
     this.setPhase('reveal', this.cfg.revealMs);
@@ -316,41 +406,53 @@ export class TriangulateRoom {
 
   standings() {
     const n = this.round;
-    let elim = [];
+    let elim = [], close = [];
     if (isElimRound(this.cfg, n)) {
       const alive = this.alive().sort((a, b) => (a.total - b.total) || (a.last - b.last) || (b.join - a.join));
-      elim = alive.slice(0, elimCount(this.cfg, alive.length));
+      const k = elimCount(this.cfg, alive.length);
+      elim = alive.slice(0, k);
       for (const p of elim) { p.alive = false; p.elimRound = n; }
+      // close calls: survivors who scraped through (within CLOSE_CALL_PTS of the cut line)
+      const line = elim.length ? elim[elim.length - 1].total : null;
+      if (line != null) close = alive.slice(k).filter((p) => p.total - line < CLOSE_CALL_PTS).map((p) => ({ id: p.id, margin: p.total - line }));
     }
-    const last = n >= this.cfg.rounds;
+    const last = n >= this.cfg.rounds || (elim.length > 0 && this.alive().length <= 1);
     const dur = last ? 2500 : this.cfg.standingsMs;
     this.setPhase('standings', dur);
-    this.broadcast({ t: 'standings', round: n, rounds: this.cfg.rounds, elim: elim.map((p) => p.id), ms: this.ms(this.phaseEnd), final: last });
+    this.broadcast({ t: 'standings', round: n, rounds: this.cfg.rounds, elim: elim.map((p) => p.id), close, ms: this.ms(this.phaseEnd), final: last });
     this.markPlayers();
     this.sched.after(dur, () => (last ? this.gameOver() : this.startRound(n + 1)), 'phase');
   }
 
   gameOver() {
+    this.sched.cancel('phase'); this.sched.cancel('bots');
     const r = this.ranked();
     this.ranking = r.map((p, i) => ({ id: p.id, name: p.name, bot: !!p.bot, total: p.total, rank: i + 1, alive: p.alive, elim: p.elimRound }));
     this.setPhase('over', this.cfg.gameoverMs);
-    this.broadcast({ t: 'over', ranking: this.ranking, ms: this.cfg.gameoverMs ? this.ms(this.phaseEnd) : 0 });
+    this.broadcast({ t: 'over', ranking: this.ranking, ms: this.cfg.gameoverMs ? this.ms(this.phaseEnd) : 0, rounds: this.round, clues: this.clueLog.length, gid: this.gid() });
     this.log(`[${this.code}] game over, winner ${r[0]?.name}`);
+    this.markPlayers();
     if (this.cfg.gameoverMs) this.sched.after(this.cfg.gameoverMs, () => this.backToLobby(true), 'phase');
+  }
+
+  checkAllReady() {
+    if (this.phase !== 'over') return;
+    const hs = this.connectedHumans();
+    if (hs.length && hs.every((h) => h.ready)) this.backToLobby(true);
   }
 
   // ------------------------------------------------------------ input
   handle(pid, msg) {
     const p = this.players.get(pid);
-    if (!p || !msg || typeof msg.t !== 'string') return;
+    if (!p || p.bot || !msg || typeof msg.t !== 'string') return;
     switch (msg.t) {
       case 'pin': {
-        if (this.phase !== 'round' || !p.alive || p.lock) return;
+        if (this.phase !== 'round' || !p.alive || p.lock || staleRound(msg, this.round)) return;
         const g = validLatLon(msg); if (g) p.guess = g;
         break;
       }
       case 'lock': {
-        if (this.phase !== 'round' || !p.alive || p.lock) return;
+        if (this.phase !== 'round' || !p.alive || p.lock || staleRound(msg, this.round)) return;
         const g = validLatLon(msg); if (g) p.guess = g;
         if (!p.guess) return;
         p.lock = this.stage;
@@ -361,7 +463,7 @@ export class TriangulateRoom {
         break;
       }
       case 'start': {
-        if (this.phase === 'lobby' && this.mode !== 'solo' && pid === this.hostId) {
+        if (this.phase === 'lobby' && this.mode === 'private' && pid === this.hostId && !this.phaseEnd && !this.draining) {
           if (typeof msg.bots === 'boolean') this.cfg.fillBots = msg.bots;
           this.sched.cancel('lobby');
           this.setPhase('lobby', 3000);
@@ -371,14 +473,14 @@ export class TriangulateRoom {
         break;
       }
       case 'again': {
-        if (this.phase !== 'over') return;
+        if (this.phase !== 'over' || p.ready) return;
         p.ready = true;
-        if (this.connectedHumans().every((h) => h.ready)) this.backToLobby(true);
-        else this.markPlayers();
+        this.markPlayers();
+        this.checkAllReady();
         break;
       }
-      case 'skip': { // solo only: fast-forward the rest of the game
-        if (this.mode === 'solo') this.sched.setSpeed(30);
+      case 'skip': { // solo only: fast-forward the rest of the game once you're out
+        if (this.mode === 'solo' && !p.alive) this.sched.setSpeed(30);
         break;
       }
       case 'snap': this.send(p, this.snapshot(p)); break;
@@ -398,21 +500,42 @@ export class TriangulateRoom {
       for (let i = 1; i <= this.stage; i++) s.stages.push(this.stageData(i));
       s.mine = { guess: p.guess, lock: p.lock };
     }
+    if (this.phase === 'intro') s.intro = { round: this.round, rounds: this.cfg.rounds, elimAfter: isElimRound(this.cfg, this.round) };
     if ((this.phase === 'reveal' || this.phase === 'standings') && this.reveal) s.reveal = this.reveal;
-    if (this.phase === 'over') s.ranking = this.ranking;
+    if (this.phase === 'over') { s.ranking = this.ranking; s.gid = this.gid(); s.played = this.round; }
+    if (!p.bot) s.hist = p.hist || [];
     return s;
   }
 
-  dispose() { this.disposed = true; this.sched.dispose(); this.players.clear(); }
+  /** Id of the current game (room instance + game counter): lets clients record each game exactly once. */
+  gid() { return `${this.code}:${this.uid}:${this.games}`; }
+
+  dispose() {
+    this.disposed = true; this.sched.dispose(); clearTimeout(this._emptyTimer);
+    for (const p of this.players.values()) clearTimeout(p._dropTimer);
+    this.players.clear();
+  }
 }
 
-function validLatLon(m) {
-  const lat = Number(m.lat), lon = Number(m.lon);
+/** A pin/lock that says which round it belongs to is ignored outside that round. */
+function staleRound(msg, round) { return msg.round != null && msg.round !== round; }
+
+export function validLatLon(m) {
+  if (typeof m.lat !== 'number' || typeof m.lon !== 'number') return null;
+  const lat = m.lat, lon = m.lon;
   if (!Number.isFinite(lat) || !Number.isFinite(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 540) return null;
-  return { lat, lon: ((lon + 540) % 360) - 180 };
+  return { lat, lon: ((((lon + 180) % 360) + 360) % 360) - 180 };
 }
+
+// invisible / layout-breaking characters: controls, format chars (bidi, zero-width, soft hyphen),
+// line/paragraph separators, Hangul fillers, braille blank, combining grapheme joiner, Mongolian vowel separator
+const INVISIBLE = /[\p{Cc}\p{Cf}\p{Zl}\p{Zp}\u115F\u1160\u3164\uFFA0\u2800\u034F\u180E]/gu;
 
 export function sanitizeName(n) {
-  const s = String(n ?? '').replace(/[\u0000-\u001f\u007f<>]/g, '').trim().slice(0, 16);
+  let s = String(n ?? '').slice(0, 128).normalize('NFC').replace(INVISIBLE, '').replace(/[<>]/g, '');
+  s = s.replace(/(\p{M}{2})\p{M}+/gu, '$1'); // cap combining-mark stacks ("zalgo")
+  s = s.replace(/\s+/g, ' ').trim();
+  s = Array.from(s).slice(0, 16).join('').trim(); // cut by whole code points, never half an emoji
+  if (!/[\p{L}\p{N}\p{S}]/u.test(s)) s = ''; // nothing visible left
   return s || 'Player' + Math.floor(Math.random() * 900 + 100);
 }

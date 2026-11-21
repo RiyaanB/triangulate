@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { scoreFor, elimCount, makeConfig, planBotGuess, isElimRound } from '../shared/game/rules.js';
+import { scoreFor, elimCount, makeConfig, planBotGuess, isElimRound, roundPoints, SCORE, pickClue, targetRating, planGuess } from '../shared/game/rules.js';
 import { distanceKm, destination, greatCircle } from '../shared/kit/geo.js';
 import { makeRng } from '../shared/kit/rng.js';
 import { Scheduler } from '../shared/kit/scheduler.js';
@@ -10,20 +10,21 @@ import { TriangulateRoom, sanitizeName } from '../shared/game/room.js';
 test('scoring: distance decay and stage multipliers', () => {
   assert.equal(scoreFor(0, 4), 5000);
   assert.equal(scoreFor(0, 1), 10000);
-  assert.ok(scoreFor(1500, 4) > 1830 && scoreFor(1500, 4) < 1845);
+  const d = SCORE.scaleKm; // e^-1 at one scale length
+  assert.ok(Math.abs(scoreFor(d, 4) - 5000 / Math.E) < 2);
   assert.ok(scoreFor(100, 2) > scoreFor(100, 3));
   assert.ok(scoreFor(20000, 1) < 10);
 });
 
-test('elimination: bottom 20%, never below minAlive, only rounds 2..6', () => {
+test('elimination: bottom 25%, never below minAlive, only rounds 2..6', () => {
   const c = makeConfig('public');
-  assert.equal(elimCount(c, 20), 4);
+  assert.equal(elimCount(c, 20), 5);
   assert.equal(elimCount(c, 4), 1);
   assert.equal(elimCount(c, 3), 0);
   assert.deepEqual([1, 2, 3, 4, 5, 6, 7].map((n) => isElimRound(c, n)), [false, true, true, true, true, true, false]);
   let alive = 20;
   for (let r = 2; r <= 6; r++) alive -= elimCount(c, alive);
-  assert.ok(alive >= 3 && alive <= 6, 'final alive ' + alive);
+  assert.ok(alive >= 3 && alive <= 5, 'final alive ' + alive);
 });
 
 test('geo: distance/destination roundtrip and great circle', () => {
@@ -40,13 +41,13 @@ test('bots: heavy-tailed errors with stage choice', () => {
   const cfg = makeConfig('public');
   const errs = [], stages = [0, 0, 0, 0];
   for (let i = 0; i < 2000; i++) {
-    const p = planBotGuess(rng, { skill: rng(), aggression: rng() }, { lat: 30, lon: 30, diff: 2 }, cfg);
+    const p = planBotGuess(rng, { skill: rng() * 0.7, aggression: rng() }, { lat: 30, lon: 30, diff: 2, rating: 5, km: 300 }, cfg);
     errs.push(distanceKm(30, 30, p.lat, p.lon)); stages[p.stage - 1]++;
     assert.ok(p.lockAt > 0 && p.lockAt < cfg.roundMs);
   }
   errs.sort((a, b) => a - b);
   const med = errs[1000], p95 = errs[1900];
-  assert.ok(med > 300 && med < 2500, 'median ' + med);
+  assert.ok(med > 60 && med < 1500, 'median ' + med);
   assert.ok(p95 > 3 * med, 'heavy tail');
   assert.ok(stages.every((s) => s > 100), 'all stages used ' + stages);
 });
@@ -110,9 +111,16 @@ test('data: live answers never shipped statically; clue files carry no coordinat
   for (const m of live) assert.ok(!pub.has(m.id), 'live clue exposed publicly: ' + m.name);
   const one = fs.readFileSync(`data/build/clues/${live[0].id}.json`, 'utf8');
   assert.ok(!/"(lat|lon|name)"/.test(one));
+  // stage-4 labels: non-Latin scripts never contain Latin letters (Latin-script countries use their own
+  // local Latin names), and no label sits on the answer at the frame centre
   const LATIN = /[A-Za-z]{3,}/;
-  for (const f of [...pub].slice(0, 30)) {
+  for (const f of [...pub]) {
     const c = JSON.parse(fs.readFileSync(`public/data/solo/${f}.json`, 'utf8'));
-    for (const l of c.s4.labels) assert.ok(!LATIN.test(l[2]), 'latin label ' + l[2]);
+    assert.ok(!c.s4.translit, 'transliterated labels are no longer used');
+    for (const l of c.s4.labels) {
+      if (c.s4.script !== 'Latin') assert.ok(!LATIN.test(l[2]), 'latin label ' + l[2]);
+      const [ax, ay] = l[3] === 'c' && l[5] != null ? [l[5], l[6]] : [l[0], l[1]];
+      if (l[3] === 'c') assert.ok(Math.hypot(ax - 500, ay - 500) >= 40, 'label on the answer: ' + l[2]);
+    }
   }
 });

@@ -16,7 +16,7 @@ const live = JSON.parse(fs.readFileSync(path.join(ROOT, 'data/build/answers.json
 for (const m of live) cp(path.join(ROOT, 'data/build/clues', m.id + '.json'), path.join(OUT, 'data/solo', m.id + '.json'));
 const all = [...solo, ...live.filter((m) => !solo.some((s) => s.id === m.id))];
 const enc = Buffer.from(JSON.stringify(all)).map((b, i) => b ^ (0x5a + (i % 13))).toString('base64');
-fs.writeFileSync(path.join(OUT, 'data/solo-pack.json'), JSON.stringify({ v: 1, n: all.length, p: enc }));
+fs.writeFileSync(path.join(OUT, 'data/solo-pack.json'), JSON.stringify({ v: 2, n: all.length, p: enc }));
 // flag static mode
 const idx = path.join(OUT, 'index.html');
 fs.writeFileSync(idx, fs.readFileSync(idx, 'utf8').replace('<head>', '<head>\n  <script>window.TRI_STATIC = true;</script>'));
