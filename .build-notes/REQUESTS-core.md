@@ -21,6 +21,17 @@
    baseline e2e run (main fixed the `t < 0` case in `animate`; the bounce factor itself can still go
    negative with an overshooting easing — clamp `bounce` to `>= 0`).
 
+5. **New UI hooks created by app.js (please style; they work unstyled with inline fallbacks):**
+   - `#title-meta.meta-row` (title screen, under the nickname row): "Lv 3 Backpacker · 2 wins · 🔥 4-day streak · Daily #21 ✓".
+   - `#over-meta.meta-row` (game over, under `#over-me`): `+120 XP` (`.meta-xp`), level + `.meta-bar` progress bar, streak.
+   - `#btn-share` (game over, next to Play again): copies a Wordle-style result to the clipboard.
+   - Banners: `banner('CLOSE CALL', …, { cls: 'close-call', color: '#ffcc4d' })` when you survive the cut by
+     < 1200 pts, and `banner('LEVEL UP', …)`. Toast `🎯 Bullseye! +500 · 🔥 3 in a row` on reveal.
+   - `#btn-solo` text becomes `☀️ Daily ✓ (replay)` once today's daily is done (original label kept in
+     `data-label`).
+6. Reveal results now carry `bull`, `bonus`, `streak`, `base` per player — a ghost-pin highlight for
+   bullseyes on the guess map would be a nice touch.
+
 ## To whoever merges
 
 - `data/raw/` in this worktree is a directory of symlinks to the main checkout's raw layers plus three new

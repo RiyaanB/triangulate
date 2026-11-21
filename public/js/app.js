@@ -495,7 +495,7 @@ function showMetaResult(ranking, meIdx, roundsPlayed) {
     h('b', {}, `Lv ${lv.level} ${titleFor(lv.level)}`), ' ',
     h('span', { class: 'meta-bar', title: `${lv.into}/${lv.need} XP`, style: { display: 'inline-block', width: '90px', height: '6px', borderRadius: '3px', background: 'rgba(255,255,255,.15)', verticalAlign: 'middle', overflow: 'hidden' } },
       h('span', { style: { display: 'block', height: '100%', width: (lv.frac * 100).toFixed(0) + '%', background: 'linear-gradient(90deg,#5ce1e6,#7c6cff)' } })),
-    res.dailyFirst ? ` · 🔥 ${res.streak}-day streak` : '');
+    res.dailyFirst ? ' · ' : '', res.dailyFirst ? h('span', { style: { whiteSpace: 'nowrap' } }, `🔥 ${res.streak}-day streak`) : '');
   if (res.levelUp) setTimeout(() => banner('LEVEL UP', `Level ${lv.level} — ${titleFor(lv.level)}`, { ms: 1800, color: '#5ce1e6' }), 1600);
   const text = shareText({
     daily: !!S.daily && S.mode === 'solo', day: S.daily || localDay(), rank: meIdx + 1, players: ranking.length,

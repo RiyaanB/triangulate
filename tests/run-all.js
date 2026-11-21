@@ -52,6 +52,13 @@ try {
 } finally {
   await srv.close();
 }
+if (!args.has('--skip-soak')) {
+  step('graceful restart (SIGTERM drains the running game, then 1012)');
+  const { runRestartTest } = await import('./restart.mjs');
+  const { errors, summary } = await runRestartTest({ root: ROOT, port: Number(process.env.RESTART_PORT) || port + 2 });
+  console.log('  ', summary);
+  if (errors.length) { failed = true; console.error(errors.map((e) => '  ✖ ' + e).join('\n')); } else console.log('  ✔ restart ok');
+}
 if (!args.has('--skip-static') && !args.has('--skip-e2e')) {
   step('static build (docs/) + e2e without a game server');
   const b = spawnSync(process.execPath, ['tools/build-static.js'], { cwd: ROOT, stdio: ['ignore', 'ignore', 'inherit'] });
