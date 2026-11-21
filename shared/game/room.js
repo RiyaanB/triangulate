@@ -8,6 +8,7 @@ import {
   makeConfig, elimCount, isElimRound, planBotGuess, pickClue, roundPoints, botSkill, clueRating, CLOSE_CALL_PTS,
 } from './rules.js';
 
+const LOBBY_DROP_GRACE_MS = 20000;
 let uid = 0;
 const newId = (p) => p + (++uid).toString(36) + Math.floor(Math.random() * 1296).toString(36);
 /** Unguessable session token (128 bit). Works in browsers and Node >= 19 (globalThis.crypto). */
@@ -128,12 +129,14 @@ export class TriangulateRoom {
     const p = this.findByToken(token);
     if (!p) return null;
     p.conn = true;
+    clearTimeout(p._dropTimer);
     clearTimeout(this._emptyTimer);
     // host migration: an orphaned room gets its returning player as host
     if (!this.hostId || !this.players.get(this.hostId)?.conn) this.setHost(p.id);
     this.log(`[${this.code}] ~ ${p.name} reconnected`);
     this.sendWelcome(p);
     this.markPlayers();
+    if (this.phase === 'lobby') this.onLobbyJoin(); // restart a public countdown that stopped while empty
     return p;
   }
 
@@ -142,7 +145,15 @@ export class TriangulateRoom {
     if (!p) return;
     p.conn = false;
     if (leave) p.left = true;
-    if (this.phase === 'lobby' || (leave && p.spec)) this.players.delete(pid);
+    if ((this.phase === 'lobby' && leave) || (leave && p.spec)) this.players.delete(pid);
+    else if (this.phase === 'lobby') {
+      // network blip in the lobby: keep the seat (and host role) for a while so a reconnect resumes it
+      clearTimeout(p._dropTimer);
+      p._dropTimer = setTimeout(() => {
+        if (!p.conn && this.phase === 'lobby' && this.players.get(pid) === p) { this.players.delete(pid); this.markPlayers(); }
+      }, LOBBY_DROP_GRACE_MS);
+      p._dropTimer.unref?.();
+    }
     // host migration: hand the room to the longest-present connected human
     if (this.hostId === pid) {
       const next = this.connectedHumans().sort((a, b) => a.join - b.join)[0];
@@ -229,6 +240,9 @@ export class TriangulateRoom {
     if (this.disposed || this.phase !== 'lobby') return;
     if (this.draining) return; // server is restarting: don't start new games
     this.sched.cancel('lobby');
+    // humans who dropped in the lobby and never came back don't get a seat in the game
+    for (const p of this.list) if (!p.bot && !p.conn) { clearTimeout(p._dropTimer); this.players.delete(p.id); }
+    if (!this.connectedHumans().length) { this.setPhase('lobby'); return; }
     if (this.cfg.fillBots) {
       const target = this.mode === 'private' ? Math.max(8, this.list.length) : this.cfg.maxPlayers;
       while (this.list.length < target) this.addBot();
@@ -483,7 +497,11 @@ export class TriangulateRoom {
     return s;
   }
 
-  dispose() { this.disposed = true; this.sched.dispose(); this.players.clear(); clearTimeout(this._emptyTimer); }
+  dispose() {
+    this.disposed = true; this.sched.dispose(); clearTimeout(this._emptyTimer);
+    for (const p of this.players.values()) clearTimeout(p._dropTimer);
+    this.players.clear();
+  }
 }
 
 export function validLatLon(m) {

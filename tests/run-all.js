@@ -23,7 +23,7 @@ if (!args.has('--no-build')) {
 }
 
 step('unit tests');
-const u = spawnSync(process.execPath, ['--test', 'tests/unit.test.js'], { cwd: ROOT, encoding: 'utf8' });
+const u = spawnSync(process.execPath, ['--test', 'tests/unit.test.js', 'tests/core.test.js'], { cwd: ROOT, encoding: 'utf8' });
 console.log(u.stdout.split('\n').filter((l) => /^(✔|✖|ℹ (pass|fail))/.test(l.trim())).map((l) => '  ' + l.trim()).join('\n'));
 if (u.status !== 0) { console.error(u.stdout.slice(-3000)); failed = true; }
 
