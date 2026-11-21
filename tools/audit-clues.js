@@ -46,7 +46,7 @@ export function audit(report) {
   for (const r of report) {
     cont[r.cont] = (cont[r.cont] || 0) + 1;
     hist[Math.min(9, Math.floor(r.rating) - 1)]++;
-    const k = r.translit ? 'translit' : r.lang;
+    const k = r.lang;
     scripts[k] = (scripts[k] || 0) + 1;
   }
   return { fails, warns, cont, hist, scripts, n: report.length };

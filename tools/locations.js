@@ -35,7 +35,7 @@ export const LOCATIONS = [
   ['London', 51.5, 0.2, 250, 'GB', 2],
   ['Dublin', 53.35, -6.25, 250, 'IE', 2],
   ['Edinburgh', 55.9, -3.4, 250, 'GB', 2],
-  ['Lake Geneva', 46.4, 6.6, 200, 'CH', 2],
+  ['Lake Geneva', 46.4, 6.6, 200, 'CH', 2, { lang: 'fr' }],
   ['Lake Balaton', 47.0, 17.9, 250, 'HU', 3],
   ['Danube Delta', 45.1, 29.4, 250, 'RO', 1],
   ['Vienna', 48.2, 16.4, 300, 'AT', 3],
@@ -112,7 +112,6 @@ export const LOCATIONS = [
   ['Luanda', -8.85, 13.25, 300, 'AO', 3],
   ['Lake Kariba', -16.9, 28.0, 350, 'ZW', 2],
   ['Lake Malawi', -13.5, 34.6, 400, 'MW', 2],
-  ['Mauritius', -20.25, 57.55, 200, 'MU', 2],
   ['Tenerife', 28.3, -16.5, 300, 'ES', 2],
   ['Mogadishu', 2.05, 45.32, 300, 'SO', 3],
   ['Tripoli', 32.9, 13.2, 300, 'LY', 3],
@@ -238,7 +237,7 @@ export const LOCATIONS = [
   ['Oahu', 21.45, -157.95, 200, 'US', 1],
   ['Big Island', 19.6, -155.5, 300, 'US', 2],
   ['Port Moresby', -9.45, 147.2, 300, 'PG', 3],
-  ['Shark Bay', -25.8, 113.7, 350, 'AU', 2],
+  ['Shark Bay', -25.8, 113.7, 450, 'AU', 2],
   ["K'gari", -25.2, 153.1, 300, 'AU', 2],
   ['Lake Eyre', -28.4, 137.3, 400, 'AU', 2],
   ['Cairns', -16.9, 145.8, 300, 'AU', 3],
@@ -260,7 +259,7 @@ export const LOCATIONS = [
   ['Chicago', 41.85, -87.65, 300, 'US', 2],
   ['Detroit', 42.35, -83.0, 300, 'US', 2],
   ['Niagara', 43.5, -79.3, 250, 'CA', 2],
-  ['Montreal', 45.5, -73.6, 300, 'CA', 3],
+  ['Montreal', 45.5, -73.6, 300, 'CA', 3, { lang: 'fr' }],
   ['Halifax', 44.65, -63.6, 300, 'CA', 3],
   ['Great Salt Lake', 41.0, -112.3, 300, 'US', 1],
   ['Dallas', 32.8, -96.9, 300, 'US', 3],
@@ -284,7 +283,7 @@ export const LOCATIONS = [
   ['Gulf of Nicoya', 10, -85, 250, 'CR', 3],
   ['Port-au-Prince', 18.6, -72.6, 300, 'HT', 2],
   ["St. John's", 47.55, -52.9, 300, 'CA', 2],
-  ['Quebec City', 46.8, -71.2, 300, 'CA', 3],
+  ['Quebec City', 46.8, -71.2, 300, 'CA', 3, { lang: 'fr' }],
   ['Tijuana', 32.6, -117.05, 250, 'MX', 2],
   ['Lake Chapala', 20.4, -103.2, 300, 'MX', 2],
   // ---- South America ----
@@ -337,10 +336,20 @@ export const LOCAL_LANG = {
   GE: 'ka', AM: 'hy', ET: 'am', ER: 'ti',
   AE: 'ar', QA: 'ar', BH: 'ar', KW: 'ar', IQ: 'ar', OM: 'ar', SA: 'ar', YE: 'ar', LB: 'ar', SY: 'ar', EG: 'ar',
   JO: 'ar', PS: 'ar', DJ: 'ar', SD: 'ar', TN: 'ar', DZ: 'ar', MA: 'ar', SO: 'ar', LY: 'ar', MR: 'ar',
+  // Latin-script countries: names in the local (official) language, never a foreign-script transliteration
+  ES: 'es', MX: 'es', AR: 'es', CO: 'es', VE: 'es', PE: 'es', CL: 'es', EC: 'es', UY: 'es', PY: 'es', BO: 'es',
+  CU: 'es', DO: 'es', GT: 'es', NI: 'es', CR: 'es', PA: 'es', HN: 'es', SV: 'es', PR: 'es', GQ: 'es',
+  BR: 'pt', PT: 'pt', AO: 'pt', MZ: 'pt', CV: 'pt', GW: 'pt', ST: 'pt', TL: 'pt',
+  FR: 'fr', CI: 'fr', SN: 'fr', CM: 'fr', MG: 'fr', GA: 'fr', CG: 'fr', CD: 'fr', ML: 'fr', BF: 'fr', NE: 'fr',
+  TD: 'fr', HT: 'fr', NC: 'fr', PF: 'fr', MU: 'fr', RE: 'fr', BJ: 'fr', TG: 'fr', GN: 'fr',
+  DE: 'de', AT: 'de', CH: 'de', LI: 'de', IT: 'it', SM: 'it', NL: 'nl', BE: 'nl', SR: 'nl',
+  PL: 'pl', SE: 'sv', HU: 'hu', TR: 'tr', VN: 'vi', ID: 'id', MY: 'id', BN: 'id',
+  US: 'en', GB: 'en', IE: 'en', AU: 'en', NZ: 'en', CA: 'en', ZA: 'en', NG: 'en', GH: 'en', KE: 'en', UG: 'en',
+  TZ: 'en', ZW: 'en', MW: 'en', ZM: 'en', BW: 'en', NA: 'en', JM: 'en', TT: 'en', BS: 'en', FJ: 'en', PG: 'en',
+  PH: 'en', MT: 'en', FK: 'en', GY: 'en', BZ: 'en', SL: 'en', LR: 'en', GM: 'en', RW: 'en', BI: 'en',
 };
-
-// Latin-script places: exonyms transliterated into an easily decodable script (tagged as such in the UI).
-export const TRANSLIT_LANGS = ['ru', 'ru', 'el'];
+// anything else (Nordics, Baltics, Romania, Croatia, Azerbaijan, Turkmenistan ...): Natural Earth's NAME field
+export const DEFAULT_LANG = 'local';
 
 const CONT = {
   Europe: 'UA RU GR CY BG RS MK IT IS PT ES FR NL DK SE NO GB IE CH HU RO AT DE PL LV FI BY MT HR SI CZ SK EE LT BE LU ME BA AL MD FO',

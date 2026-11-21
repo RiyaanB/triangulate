@@ -111,9 +111,16 @@ test('data: live answers never shipped statically; clue files carry no coordinat
   for (const m of live) assert.ok(!pub.has(m.id), 'live clue exposed publicly: ' + m.name);
   const one = fs.readFileSync(`data/build/clues/${live[0].id}.json`, 'utf8');
   assert.ok(!/"(lat|lon|name)"/.test(one));
+  // stage-4 labels: non-Latin scripts never contain Latin letters (Latin-script countries use their own
+  // local Latin names), and no label sits on the answer at the frame centre
   const LATIN = /[A-Za-z]{3,}/;
-  for (const f of [...pub].slice(0, 30)) {
+  for (const f of [...pub]) {
     const c = JSON.parse(fs.readFileSync(`public/data/solo/${f}.json`, 'utf8'));
-    for (const l of c.s4.labels) assert.ok(!LATIN.test(l[2]), 'latin label ' + l[2]);
+    assert.ok(!c.s4.translit, 'transliterated labels are no longer used');
+    for (const l of c.s4.labels) {
+      if (c.s4.script !== 'Latin') assert.ok(!LATIN.test(l[2]), 'latin label ' + l[2]);
+      const [ax, ay] = l[3] === 'c' && l[5] != null ? [l[5], l[6]] : [l[0], l[1]];
+      if (l[3] === 'c') assert.ok(Math.hypot(ax - 500, ay - 500) >= 40, 'label on the answer: ' + l[2]);
+    }
   }
 });

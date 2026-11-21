@@ -262,8 +262,11 @@ function onStage(m, silent) {
   }
   if (m.i === 4 && m.data.script) {
     const t = $('#script-tag');
-    t.innerHTML = m.data.translit ? `Names in <b>${m.data.script}</b> <span style="opacity:.7">(transliterated, not local)</span>` : `Names in local script: <b>${m.data.script}</b>`;
+    // Latin-script countries show their own local names: no script hint (it would only say "Latin")
+    if (m.data.script === 'Latin') t.innerHTML = '🏷 <b>Local place names</b>';
+    else t.innerHTML = `Names in local script: <b>${m.data.script}</b>`;
     t.classList.remove('hidden');
+    styleTerrainLabels();
   }
   if (!silent) { if (m.i > 1) sfx.stage(); }
   updateLockBtn();
@@ -271,17 +274,26 @@ function onStage(m, silent) {
 
 // [core] fallback until cluecard.js renders clue-format-v2 stage-1 borders itself (see REQUESTS-core.md)
 function drawBordersFallback(paths) {
-  const host = card.layers?.coast;
+  const host = card.L?.coast || card.layers?.coast;
   if (!host) return;
   for (const d of paths) {
     const p = document.createElementNS('http://www.w3.org/2000/svg', 'path');
     p.setAttribute('d', d);
     p.setAttribute('fill', 'none');
-    p.setAttribute('stroke', '#f5a3c7');
-    p.setAttribute('stroke-width', '2.5');
-    p.setAttribute('stroke-dasharray', '10 7');
-    p.setAttribute('opacity', '.75');
+    p.setAttribute('class', 'border-fallback');
+    p.setAttribute('style', 'stroke:var(--m-border,#f5a3c7);stroke-width:2.6;stroke-dasharray:10 7;opacity:.85;stroke-linecap:round');
     host.prepend(p);
+  }
+}
+
+// [core] terrain labels (islands, ranges, deserts: kind 'g') read as regions, not towns, until cluecard styles them
+function styleTerrainLabels() {
+  for (const t of $$('#clue-frame .lab-g text')) {
+    if (t.dataset.styled) continue;
+    t.dataset.styled = '1';
+    t.style.letterSpacing = '.12em';
+    t.style.fontWeight = '600';
+    t.style.fillOpacity = '.78';
   }
 }
 

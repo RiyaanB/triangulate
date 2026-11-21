@@ -13,6 +13,7 @@ export function rateClue(s) {
   if (s.rivers < 150 && s.roads < 300) r += 0.4;
   // Stage 4 help: transliterated exonyms are a weaker hint than true local script; few labels weaker still
   if (s.translit) r += 0.4;
+  if (s.latin) r -= 0.3; // readable local Latin names are a strong stage-4 hint
   r += s.labels < 3 ? 0.5 : s.labels < 6 ? 0.2 : -0.1;
   return Math.round(Math.max(1, Math.min(10, r)) * 10) / 10;
 }

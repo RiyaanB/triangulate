@@ -11,7 +11,7 @@ import { loadShapefile, mergeLayers } from '../lib/mapdata/loader.js';
 import { makeProjection, polygonLayer, lineLayer, pointLayer, toPath, ringArea, lineLength, SIZE } from '../lib/mapdata/snippet.js';
 import { simplify } from '../lib/mapdata/geometry.js';
 import { LANGS, inScript, textEm } from '../lib/mapdata/scripts.js';
-import { LOCATIONS, LOCAL_LANG, TRANSLIT_LANGS, continentOf } from './locations.js';
+import { LOCATIONS, LOCAL_LANG, DEFAULT_LANG, continentOf } from './locations.js';
 import { rateClue } from './difficulty.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -97,16 +97,13 @@ function chunkPaths(lines, maxPer = 12) {
 
 const sumLen = (lines) => lines.reduce((a, l) => a + lineLength(l), 0);
 
-/** Pick the label language for a location: explicit override, country default, or a transliteration. */
+/** Label language for a location: explicit override, else the country's local language (never a
+ *  foreign-script transliteration — Latin-script countries get their own local Latin names). */
 function langsFor(loc) {
-  const [name, , , , cc, , opts = {}] = loc;
+  const [, , , , cc, , opts = {}] = loc;
   if (opts.lang) return { chain: [opts.lang, ...(opts.fallback ? [opts.fallback] : [])], translit: false };
-  const l = LOCAL_LANG[cc];
-  if (l) return { chain: Array.isArray(l) ? l : [l], translit: false };
-  // Latin-script country: show exonyms transliterated into a decodable script, clearly tagged.
-  const h = parseInt(hash(name).slice(0, 6), 16);
-  const first = TRANSLIT_LANGS[h % TRANSLIT_LANGS.length];
-  return { chain: [first, ...TRANSLIT_LANGS.filter((x) => x !== first)], translit: true };
+  const l = LOCAL_LANG[cc] || DEFAULT_LANG;
+  return { chain: Array.isArray(l) ? l : [l], translit: false };
 }
 
 /** Local-script name for a feature in `lang`, or null. Curated table first, then Natural Earth fields. */
@@ -118,24 +115,35 @@ function nameIn(props, lang, kind, need) {
   let t = null;
   if (field) t = props['NAME_' + field.toUpperCase()] ?? props['name_' + field];
   // drop parentheticals and Russian/Greek stress marks (combining acute) that NE sometimes carries
+  // Latin-script languages fall back to Natural Earth's NAME (the local/common form)
+  if (!t && LANGS[lang]?.latin) t = props.NAME ?? props.name ?? null;
   if (t) t = String(t).replace(/\s*\(.*?\)\s*/g, ' ').replace(/́/g, '').trim();
-  if (!t && need && !field) need(keys.find(Boolean), props, kind);
+  if (!t && need && !field && !LANGS[lang]?.latin) need(keys.find(Boolean), props, kind);
   return t || null;
 }
+
+function pointInRing(ring, px, py) {
+  let c = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const [xi, yi] = ring[i], [xj, yj] = ring[j];
+    if ((yi > py) !== (yj > py) && px < ((xj - xi) * (py - yi)) / (yj - yi) + xi) c = !c;
+  }
+  return c;
+}
+
+// Stage-4 labels never name the answer itself: nothing anchored near the frame centre, and no lake /
+// island / bay / peninsula label for a feature that contains the centre.
+const CENTER_R = 100;
+let centerR = CENTER_R; // relaxed for very sparse frames (see buildClue)
+const nearCenter = (x, y) => Math.hypot(x - SIZE / 2, y - SIZE / 2) < centerR;
+const holdsCenter = (ring) => pointInRing(ring, SIZE / 2, SIZE / 2);
 
 /** A good label anchor inside a (clipped, frame-space) ring: interior grid point farthest from the edge. */
 function interiorPoint(ring) {
   let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
   for (const [x, y] of ring) { x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y); }
   x0 = Math.max(x0, 0); y0 = Math.max(y0, 0); x1 = Math.min(x1, SIZE); y1 = Math.min(y1, SIZE);
-  const inside = (px, py) => {
-    let c = false;
-    for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
-      const [xi, yi] = ring[i], [xj, yj] = ring[j];
-      if ((yi > py) !== (yj > py) && px < ((xj - xi) * (py - yi)) / (yj - yi) + xi) c = !c;
-    }
-    return c;
-  };
+  const inside = (px, py) => pointInRing(ring, px, py);
   const edgeDist = (px, py) => {
     let best = Infinity;
     for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
@@ -170,6 +178,7 @@ function buildLabels(loc, proj, L, lakeRings, rivers, lang, need) {
     return t;
   };
   for (const p of pointLayer(L.places, proj, 14)) {
+    if (nearCenter(p.x, p.y)) continue;
     const t = check(nameIn(p.props, lang, 'c', need), 'c');
     if (!t) continue;
     const big = p.props.FEATURECLA?.startsWith('Admin-0 capital') || p.props.SCALERANK <= 2;
@@ -177,7 +186,7 @@ function buildLabels(loc, proj, L, lakeRings, rivers, lang, need) {
     cands.push({ x: p.x, y: p.y, t, k: 'c', s: size, pri: p.props.SCALERANK - (big ? 5 : 0), dot: 1 });
   }
   for (const r of lakeRings) {
-    if (Math.abs(ringArea(r.ring)) < 9000) continue;
+    if (Math.abs(ringArea(r.ring)) < 9000 || holdsCenter(r.ring)) continue;
     const t = check(nameIn(r.props, lang, 'w', need), 'w');
     if (!t) continue;
     let cx = 0, cy = 0; for (const p of r.ring) { cx += p[0]; cy += p[1]; } cx /= r.ring.length; cy /= r.ring.length;
@@ -197,13 +206,14 @@ function buildLabels(loc, proj, L, lakeRings, rivers, lang, need) {
     let ang = Math.atan2(b[1] - a[1], b[0] - a[0]) * 180 / Math.PI;
     if (ang > 90) ang -= 180; if (ang < -90) ang += 180;
     ang = Math.max(-50, Math.min(50, ang));
+    if (nearCenter(line[m][0], line[m][1])) continue;
     cands.push({ x: line[m][0], y: line[m][1], t, k: 'r', s: 21, pri: 7, a: Math.round(ang) });
   }
   // named seas/bays/straits ('w', water style) and islands/peninsulas/ranges ('g', terrain style)
   for (const [layer, kind, re, pri] of [[L.marine, 'w', MARINE_KINDS, 6.5], [L.regions, 'g', REGION_KINDS, 8]]) {
     const parts = new Map();
     for (const r of polygonLayer(layer, proj, { tol: 1.5, minArea: 2500 })) {
-      if (!re.test(r.props.featurecla || r.props.FEATURECLA || '')) continue;
+      if (!re.test(r.props.featurecla || r.props.FEATURECLA || '') || holdsCenter(r.ring)) continue;
       const t = check(nameIn(r.props, lang, kind, need), kind);
       if (!t) continue;
       const area = Math.abs(ringArea(r.ring));
@@ -284,18 +294,25 @@ function buildClue(loc, L, need) {
     roads: [2, 1].map((w) => [w, chunkPaths(roads.filter((r) => roadW(r.props) === w).map((r) => r.line), 8)]).filter((x) => x[1].length),
     rail: chunkPaths(rail.map((r) => r.line), 6),
   };
-  // ---- stage 4: names in the local script (or a clearly-tagged transliteration for Latin-script places)
+  // ---- stage 4: place names in the local script (local Latin-script names for Latin-script countries)
   const { chain, translit } = langsFor(loc);
   let best = null;
-  for (const lang of chain) {
-    const r = buildLabels(loc, proj, L, lakeRings, rivers, lang, (k, props, kind) => need?.(name, lang, k, props, kind));
-    if (!best || r.labels.length > best.labels.length) best = { ...r, lang };
-    if (r.labels.length >= 3) break;
+  // sparse frames (small islands, remote places): shrink the no-label zone around the answer before giving up
+  for (const radius of [CENTER_R, 45]) {
+    centerR = radius;
+    for (const lang of chain) {
+      const r = buildLabels(loc, proj, L, lakeRings, rivers, lang, (k, props, kind) => need?.(name, lang, k, props, kind));
+      if (!best || r.labels.length > best.labels.length) best = { ...r, lang };
+      if (r.labels.length >= 3) break;
+    }
+    if (best.labels.length >= 2) break;
   }
+  centerR = CENTER_R;
   stats.labels = best.labels.length;
   stats.badScript = best.bad.slice(0, 4);
   stats.lang = best.lang;
   stats.translit = translit;
+  stats.latin = LANGS[best.lang].family === 'Latin';
   const s4 = { labels: best.labels, script: LANGS[best.lang].family, translit };
   return { clue: { v: 2, km, s1, s2, s3, s4 }, stats };
 }
