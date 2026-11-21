@@ -49,7 +49,7 @@
 .lobby-count small { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .12em; }
 .code-row { display: flex; align-items: center; gap: 10px; color: var(--muted); font-weight: 600; }
 .code-row b { font-family: var(--mono); font-size: 26px; letter-spacing: .2em; color: var(--gold); }
-.lobby-players { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; overflow-y: auto; min-height: 80px; }
+.lobby-players { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 8px; overflow-y: auto; min-height: 80px; }
 .lp { display: flex; align-items: center; gap: 8px; padding: 8px 10px; background: rgba(255,255,255,.05); border-radius: 10px; font-weight: 600; font-size: 14px; animation: popin .35s cubic-bezier(.2,1.5,.4,1) both; min-width: 0; }
 .lp .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .lp.me { box-shadow: 0 0 0 1.5px var(--accent) inset; }
@@ -62,6 +62,7 @@
 #scr-game { flex-direction: column; }
 .topbar { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; gap: 8px; flex: none; }
 .tb-left, .tb-right { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.topbar .chip { white-space: nowrap; }
 .tb-logo { width: 26px; height: 26px; flex: none; }
 .alive-chip { color: var(--good); }
 .spec-chip { color: var(--warn); }
@@ -202,6 +203,10 @@
 @media (max-width: 760px), (orientation: portrait) and (max-width: 900px) {
   .topbar { padding: 8px 10px; }
   .tb-left .chip { padding: 4px 8px; font-size: 11px; }
+  .tb-left, .tb-right { gap: 5px; }
+  .spec-chip .t { display: none; }
+  .skip-bar { top: 52px; bottom: auto; white-space: nowrap; font-size: 13px; }
+  .banner p { font-size: 14px; }
   .tb-logo { display: none; }
   .btn-icon { width: 34px; height: 34px; border-radius: 10px; }
   .game-grid { display: flex; flex-direction: column; gap: 8px; padding: 0 8px 26px; }
@@ -223,3 +228,10 @@
   .over { padding: 18px; }
   .pod.p1 .blk { height: 96px; } .pod.p2 .blk { height: 70px; } .pod.p3 .blk { height: 52px; }
 }
+
+/* eliminated banner gets a backdrop so it reads over anything */
+.banner.elim::before { content: ''; position: absolute; inset: 0; background: radial-gradient(closest-side, rgba(40,4,12,.85), rgba(7,13,24,.55)); animation: fade .3s both; }
+.banner.elim.out::before { animation: fade .4s reverse both; }
+.banner .banner-inner { position: relative; padding: 0 20px; }
+.row .tag-bot, .lp .tag-bot { font-style: normal; }
+.row .tag-bot { font-size: 11px; padding: 0 4px; background: rgba(124,108,255,.14); }

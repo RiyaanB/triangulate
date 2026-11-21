@@ -13,6 +13,7 @@ export class WsConnection {
     this.joinMsg = joinMsg; this.onStatus = onStatus;
     this.onmessage = () => {};
     this.closed = false; this.tries = 0; this.session = null;
+    this.pending = []; // game inputs sent while (re)connecting are flushed after re-joining
     this.open();
   }
   open() {
@@ -23,6 +24,7 @@ export class WsConnection {
       this.tries = 0;
       const msg = this.session ? { ...this.joinMsg, token: this.session.token, code: this.session.code } : this.joinMsg;
       ws.send(JSON.stringify(msg));
+      for (const m of this.pending.splice(0)) ws.send(JSON.stringify(m));
       this.onStatus(this.session ? 'reconnected' : 'open');
       clearInterval(this.ping);
       this.ping = setInterval(() => this.send({ t: 'ping', c: Date.now() }), 15000);
@@ -44,7 +46,10 @@ export class WsConnection {
     ws.onerror = () => {};
   }
   fail() { this.onStatus('failed'); }
-  send(m) { if (this.ws?.readyState === 1) this.ws.send(JSON.stringify(m)); }
+  send(m) {
+    if (this.ws?.readyState === 1) this.ws.send(JSON.stringify(m));
+    else if (!this.closed && m.t !== 'ping' && this.pending.length < 20) this.pending.push(m);
+  }
   close() {
     this.closed = true; clearInterval(this.ping);
     try { this.send({ t: 'leave' }); this.ws?.close(); } catch { /* ignore */ }
@@ -76,12 +81,13 @@ export async function soloClueSource() {
 }
 
 export class LocalConnection {
-  constructor({ name, seed, speed = 1 }) {
+  // mode 'solo' (daily run) or 'public' (full match vs in-browser bots, used by the static build)
+  constructor({ name, seed, speed = 1, mode = 'solo', config = {} }) {
     this.onmessage = () => {};
     this.queue = [];
     this.ready = soloClueSource().then((clues) => {
       this.room = new TriangulateRoom({
-        code: 'SOLO', mode: 'solo', clues, speed, seed,
+        code: mode === 'solo' ? 'SOLO' : 'BOTS', mode, clues, speed, seed, config,
         send: (pid, msg) => setTimeout(() => this.onmessage(structuredClone(msg)), 0),
       });
       this.me = this.room.addHuman({ name });

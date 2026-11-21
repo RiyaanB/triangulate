@@ -204,6 +204,10 @@ async function main() {
   };
   console.log('layers loaded in', ((Date.now() - t0) / 1000).toFixed(1), 's');
 
+  // start from clean output dirs (our own build artifacts) so no stale clue can leak into the public pool
+  for (const d of [path.join(OUT_PRIVATE, 'clues'), path.join(OUT_PUBLIC, 'solo')]) {
+    if (fs.existsSync(d)) for (const f of fs.readdirSync(d)) if (f.endsWith('.json')) fs.unlinkSync(path.join(d, f));
+  }
   fs.mkdirSync(path.join(OUT_PRIVATE, 'clues'), { recursive: true });
   fs.mkdirSync(path.join(OUT_PUBLIC, 'solo'), { recursive: true });
   const live = [], solo = [], report = [];

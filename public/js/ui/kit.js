@@ -79,7 +79,7 @@ export function countUp(el, to, { from = 0, ms = 900, prefix = '', suffix = '', 
   const t0 = performance.now();
   let lastTick = 0;
   const step = (t) => {
-    const f = Math.min(1, (t - t0) / ms);
+    const f = Math.max(0, Math.min(1, (t - t0) / ms));
     const e = 1 - Math.pow(1 - f, 3);
     el.textContent = prefix + fmt(from + (to - from) * e) + suffix;
     if (tick && to > 0 && t - lastTick > 55 && f < 1) { lastTick = t; sfx.count?.(e); }
