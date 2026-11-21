@@ -169,7 +169,18 @@ function interiorPoint(ring) {
 const MARINE_KINDS = /^(sea|bay|gulf|strait|channel|sound|fjord|lagoon|inlet|reef)$/i;
 const REGION_KINDS = /^(Island|Island group|Pen\/cape|Peninsula|Delta|Range\/mtn|Desert|Isthmus|Depression|Wetlands)$/;
 
+const norm = (x) => String(x || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z]/g, '');
+/** True when a feature's English/NE name is (part of) the clue's own name, e.g. "Hanoi", "Geneva" in "Lake Geneva". */
+function namesAnswer(props, clueNorm) {
+  for (const k of [props.NAME, props.NAME_EN, props.NAMEASCII, props.name, props.name_en, props.NAME_EN]) {
+    const n = norm(k);
+    if (n.length >= 4 && (n === clueNorm || clueNorm.includes(n) || n.includes(clueNorm))) return true;
+  }
+  return false;
+}
+
 function buildLabels(loc, proj, L, lakeRings, rivers, lang, need) {
+  const clueNorm = norm(loc[0]);
   const cands = [];
   const bad = [];
   const check = (t, kind) => {
@@ -179,6 +190,7 @@ function buildLabels(loc, proj, L, lakeRings, rivers, lang, need) {
   };
   for (const p of pointLayer(L.places, proj, 14)) {
     if (nearCenter(p.x, p.y)) continue;
+    if (namesAnswer(p.props, clueNorm)) continue;
     const t = check(nameIn(p.props, lang, 'c', need), 'c');
     if (!t) continue;
     const big = p.props.FEATURECLA?.startsWith('Admin-0 capital') || p.props.SCALERANK <= 2;
@@ -187,6 +199,7 @@ function buildLabels(loc, proj, L, lakeRings, rivers, lang, need) {
   }
   for (const r of lakeRings) {
     if (Math.abs(ringArea(r.ring)) < 9000 || holdsCenter(r.ring)) continue;
+    if (namesAnswer(r.props, clueNorm)) continue;
     const t = check(nameIn(r.props, lang, 'w', need), 'w');
     if (!t) continue;
     let cx = 0, cy = 0; for (const p of r.ring) { cx += p[0]; cy += p[1]; } cx /= r.ring.length; cy /= r.ring.length;
@@ -196,6 +209,7 @@ function buildLabels(loc, proj, L, lakeRings, rivers, lang, need) {
   for (const r of rivers) {
     const len = lineLength(r.line);
     if (len < 140) continue;
+    if (namesAnswer(r.props, clueNorm)) continue;
     const t = check(nameIn(r.props, lang, 'r', need), 'r');
     if (!t) continue;
     if (!byRiver.has(t) || byRiver.get(t).len < len) byRiver.set(t, { len, line: r.line });
@@ -214,6 +228,7 @@ function buildLabels(loc, proj, L, lakeRings, rivers, lang, need) {
     const parts = new Map();
     for (const r of polygonLayer(layer, proj, { tol: 1.5, minArea: 2500 })) {
       if (!re.test(r.props.featurecla || r.props.FEATURECLA || '') || holdsCenter(r.ring)) continue;
+      if (namesAnswer(r.props, clueNorm)) continue;
       const t = check(nameIn(r.props, lang, kind, need), kind);
       if (!t) continue;
       const area = Math.abs(ringArea(r.ring));

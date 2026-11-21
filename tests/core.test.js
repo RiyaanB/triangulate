@@ -314,6 +314,23 @@ test('content: built clue pool passes the audit (>= 250 clues, no hard failures)
   for (const c of ['Europe', 'Asia', 'Africa', 'Middle East', 'North America', 'South America', 'Oceania']) assert.ok((res.cont[c] || 0) >= 15, c + ' ' + res.cont[c]);
 });
 
+test('content: stage-4 labels never spell out the answer (Latin-script clues)', () => {
+  if (!fs.existsSync('data/build/answers.json')) return;
+  const norm = (x) => String(x).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z]/g, '');
+  const dec = (j) => JSON.parse(Buffer.from(j.p, 'base64').map((x, i) => x ^ (0x5a + (i % 13))).toString());
+  const live = JSON.parse(fs.readFileSync('data/build/answers.json', 'utf8')).map((m) => [m, `data/build/clues/${m.id}.json`]);
+  const solo = dec(JSON.parse(fs.readFileSync('public/data/solo-pack.json', 'utf8'))).map((m) => [m, `public/data/solo/${m.id}.json`]);
+  let latin = 0;
+  for (const [m, file] of [...live, ...solo]) {
+    const c = JSON.parse(fs.readFileSync(file, 'utf8'));
+    assert.ok(!c.s4.translit, 'no transliteration: ' + m.name);
+    if (c.s4.script !== 'Latin') continue;
+    latin++;
+    for (const l of c.s4.labels) assert.notEqual(norm(l[2]), norm(m.name), `${m.name}: label "${l[2]}" names the answer`);
+  }
+  assert.ok(latin > 100, 'latin clues ' + latin);
+});
+
 test('balance: simulated decent human survives a few rounds and sometimes wins', async () => {
   if (!fs.existsSync('data/build/answers.json')) return;
   const { runSim } = await import('../tools/sim.js');
