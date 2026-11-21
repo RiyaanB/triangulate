@@ -298,10 +298,171 @@ test('proxy: ws URL is relative to the page (path prefix + https -> wss)', async
 test('proxy: X-Forwarded-For only trusted from loopback / TRUST_PROXY', async () => {
   const { clientIp } = await import('../server/index.js');
   const req = (peer, xff) => ({ socket: { remoteAddress: peer }, headers: xff ? { 'x-forwarded-for': xff } : {} });
-  assert.equal(clientIp(req('127.0.0.1', '203.0.113.7, 10.0.0.1'), 'loopback'), '203.0.113.7');
+  // the proxy APPENDS the real client: earlier entries are whatever the client sent (spoofable)
+  assert.equal(clientIp(req('127.0.0.1', '6.6.6.6, 203.0.113.7'), 'loopback'), '203.0.113.7');
   assert.equal(clientIp(req('198.51.100.2', '203.0.113.7'), 'loopback'), '198.51.100.2'); // spoof from the internet
   assert.equal(clientIp(req('10.1.2.3', '203.0.113.7'), '1'), '203.0.113.7');
   assert.equal(clientIp(req('127.0.0.1', '203.0.113.7'), '0'), '127.0.0.1');
+});
+
+// ------------------------------------------------------------------ bug-hunt regressions (server / lobby)
+const welcomeOf = (ws) => ws.last('welcome');
+
+test('regress: a room creator whose seat expired rejoins the SAME room by code (never a new room)', () => {
+  const lobby = mkLobby();
+  const host = new FakeWs(); lobby.attach(host, '3.3.3.1');
+  host.msg({ t: 'join', mode: 'create', name: 'host' });
+  const w = welcomeOf(host);
+  const friend = new FakeWs(); lobby.attach(friend, '3.3.3.2');
+  friend.msg({ t: 'join', mode: 'private', code: w.code, name: 'friend' });
+  const room = lobby.rooms.get(w.code);
+  room.players.delete(w.you); // seat expired (e.g. dropped > 20 s in the lobby)
+  const back = new FakeWs(); lobby.attach(back, '3.3.3.1');
+  back.msg({ t: 'join', mode: 'create', name: 'host', token: w.token, code: w.code });
+  assert.equal(welcomeOf(back).code, w.code);
+  assert.equal(lobby.rooms.size, 1);
+  // and if the room is gone: a clear error, not a fresh room
+  lobby.closeRoom(room);
+  const late = new FakeWs(); lobby.attach(late, '3.3.3.1');
+  late.msg({ t: 'join', mode: 'create', name: 'host', token: w.token, code: w.code });
+  assert.equal(late.last('error').code, 'expired');
+  assert.equal(lobby.rooms.size, 0);
+  lobby.dispose();
+});
+
+test('regress: resuming a seat closes the old socket, which can no longer act on it', () => {
+  const lobby = mkLobby();
+  const a = new FakeWs(); lobby.attach(a, '4.4.4.1');
+  a.msg({ t: 'join', mode: 'create', name: 'a' });
+  const w = welcomeOf(a);
+  const b = new FakeWs(); lobby.attach(b, '4.4.4.1');
+  b.msg({ t: 'join', mode: 'create', name: 'a', token: w.token, code: w.code });
+  assert.equal(a.closed, 4000);
+  assert.equal(welcomeOf(b).you, w.you);
+  a.emit('message', Buffer.from(JSON.stringify({ t: 'leave' })), false); // stale tab tries to leave
+  assert.ok(lobby.rooms.get(w.code).players.has(w.you), 'seat survived');
+  assert.equal(lobby.sockets.get(w.you), b);
+  lobby.dispose();
+});
+
+test('regress: re-sending a join for your own seat keeps it and leaks nothing', () => {
+  const lobby = mkLobby();
+  const a = new FakeWs(); lobby.attach(a, '5.5.5.1');
+  a.msg({ t: 'join', mode: 'create', name: 'a' });
+  const w = welcomeOf(a);
+  for (let i = 0; i < 5; i++) a.msg({ t: 'join', mode: 'create', name: 'a', token: w.token, code: w.code });
+  assert.equal(welcomeOf(a).you, w.you);
+  assert.equal(lobby.sockets.size, 1);
+  assert.equal(lobby.rooms.size, 1);
+  lobby.dispose();
+});
+
+test('regress: Start still works after everyone dropped during the countdown', async () => {
+  const { room } = mkRoom();
+  const a = room.addHuman({ name: 'host' });
+  room.handle(a.id, { t: 'start', bots: true });
+  room.disconnect(a.id); // the only human drops mid-countdown: scheduler is cleared
+  assert.equal(room.phaseEnd, 0);
+  room.reconnect(a.token);
+  room.handle(a.id, { t: 'start', bots: true });
+  await until(() => room.phase !== 'lobby');
+  room.dispose();
+});
+
+test('regress: a short blip by the only living human does not cut the round short', async () => {
+  const { room } = mkRoom({ speed: 50 });
+  const a = room.addHuman({ name: 'a' });
+  room.handle(a.id, { t: 'start', bots: true });
+  await until(() => room.phase === 'round');
+  room.disconnect(a.id);
+  await sleep(10);
+  assert.ok(!room._endingEarly, 'round should keep running for the dropped player');
+  assert.equal(room.phase, 'round');
+  room.reconnect(a.token);
+  room.dispose();
+});
+
+test('regress: a lone host with bots off plays all 7 rounds; leaving mid-game forfeits', async () => {
+  const { room, inbox } = mkRoom({ speed: 600 });
+  const a = room.addHuman({ name: 'solo-host' });
+  room.handle(a.id, { t: 'start', bots: false });
+  await until(() => (inbox.get(a.id) || []).some((m) => m.t === 'over'), 20000);
+  assert.equal(room.round, 7);
+  const { room: r2 } = mkRoom({ speed: 200 });
+  const x = r2.addHuman({ name: 'x' }), y = r2.addHuman({ name: 'y' });
+  r2.handle(x.id, { t: 'start', bots: true });
+  await until(() => r2.phase === 'round');
+  r2.disconnect(y.id, { leave: true });
+  assert.equal(r2.players.get(y.id).alive, false);
+  room.dispose(); r2.dispose();
+});
+
+test('regress: pins/locks tagged with an old round are ignored; snapshot carries my history + game id', async () => {
+  const { room, inbox } = mkRoom({ speed: 300 });
+  const a = room.addHuman({ name: 'a' });
+  room.handle(a.id, { t: 'start', bots: true });
+  await until(() => room.phase === 'round' && room.round === 2, 20000);
+  room.handle(a.id, { t: 'lock', lat: 1, lon: 1, round: 1 });
+  assert.equal(a.lock, 0);
+  room.handle(a.id, { t: 'pin', lat: 1, lon: 1, round: 2 });
+  assert.deepEqual(a.guess, { lat: 1, lon: 1 });
+  room.handle(a.id, { t: 'snap' });
+  const snap = inbox.get(a.id).filter((m) => m.t === 'snap').pop();
+  assert.equal(snap.hist.length, 1);
+  assert.ok('stage' in snap.hist[0]);
+  await until(() => room.phase === 'over', 20000);
+  room.handle(a.id, { t: 'snap' });
+  const s2 = inbox.get(a.id).filter((m) => m.t === 'snap').pop();
+  assert.match(s2.gid, /^TEST:[0-9a-f]{8}:1$/);
+  assert.equal(s2.played, 7);
+  room.dispose();
+});
+
+test('regress: Start while the server drains does not leave a stuck countdown', () => {
+  const lobby = mkLobby();
+  const a = new FakeWs(); lobby.attach(a, '6.6.6.1');
+  a.msg({ t: 'join', mode: 'create', name: 'a' });
+  lobby.drain({ maxMs: 50 });
+  const room = lobby.rooms.get(welcomeOf(a).code);
+  a.msg({ t: 'start', bots: true });
+  assert.equal(room.phaseEnd, 0);
+  room.beginGame();
+  assert.equal(room.phase, 'lobby');
+  assert.equal(room.phaseEnd, 0);
+  lobby.dispose();
+});
+
+test('regress: room-code brute force and socket churn are throttled per IP', () => {
+  const lobby = mkLobby({ privateFailsPerIpPerMin: 5, connsPerIpPerMin: 8 });
+  const ws = new FakeWs(); lobby.attach(ws, '7.7.7.7');
+  for (let i = 0; i < 8; i++) ws.msg({ t: 'join', mode: 'private', code: 'ZZZ' + 'ABCDEFGH'[i], name: 'x' });
+  assert.equal(ws.last('error').code, 'slow');
+  const socks = Array.from({ length: 9 }, () => new FakeWs());
+  const ok = socks.map((s) => { const r = lobby.attach(s, '7.7.7.8'); s.close(1000); return r; });
+  assert.equal(ok.filter(Boolean).length, 8);
+  lobby.dispose();
+});
+
+test('regress: names lose invisible/bidi characters and are cut by whole characters', async () => {
+  const { sanitizeName } = await import('../shared/game/room.js');
+  assert.match(sanitizeName('ㅤㅤ⠀'), /^Player\d+$/);
+  assert.equal(sanitizeName('a؜b c‮d'), 'abcd');
+  const emo = sanitizeName('😀'.repeat(20));
+  assert.equal(Array.from(emo).length, 16);
+  assert.ok(!/[\uD800-\uDBFF]$/.test(emo), 'no half surrogate');
+  assert.equal(sanitizeName('ź́́́́o').normalize('NFD').length <= 5, true);
+});
+
+test('regress: websocket Origin must match the page host (unless allowed)', async () => {
+  const { originAllowed } = await import('../server/index.js');
+  const req = (origin, host = 'game.example', xfh) => ({ headers: { origin, host, ...(xfh ? { 'x-forwarded-host': xfh } : {}) } });
+  assert.ok(originAllowed(req(undefined), {}));
+  assert.ok(originAllowed(req('https://game.example'), {}));
+  assert.ok(originAllowed(req('https://public.example', '127.0.0.1:8787', 'public.example'), {}));
+  assert.ok(!originAllowed(req('https://evil.example'), {}));
+  assert.ok(!originAllowed(req('null'), {}));
+  assert.ok(originAllowed(req('https://evil.example'), { TRI_ORIGIN_CHECK: '0' }));
+  assert.ok(originAllowed(req('https://embed.example'), { TRI_ALLOWED_ORIGINS: 'https://embed.example' }));
 });
 
 // ------------------------------------------------------------------ content + balance

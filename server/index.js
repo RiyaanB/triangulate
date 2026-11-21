@@ -20,13 +20,37 @@ const MIME = {
 const MOUNTS = [['/shared/', path.join(ROOT, 'shared')], ['/', path.join(ROOT, 'public')]];
 const LOOPBACK = /^(127\.|::1$|::ffff:127\.)/;
 
-/** Client IP: X-Forwarded-For is only believed from a trusted proxy (TRUST_PROXY=1, or loopback peers by default). */
+/**
+ * Client IP: X-Forwarded-For is only believed from a trusted proxy (TRUST_PROXY=1, or loopback peers by
+ * default), and then only its LAST entry — the one our proxy appended. Earlier entries are client-supplied.
+ */
 export function clientIp(req, trust = process.env.TRUST_PROXY ?? 'loopback') {
   const peer = req.socket?.remoteAddress || '?';
   const xff = req.headers?.['x-forwarded-for'];
   const trusted = trust === '1' || trust === 'true' || (trust === 'loopback' && LOOPBACK.test(peer));
-  if (trusted && typeof xff === 'string' && xff.length < 512) return xff.split(',')[0].trim() || peer;
+  if (trusted && typeof xff === 'string' && xff.length < 2048) {
+    const parts = xff.split(',').map((x) => x.trim()).filter(Boolean);
+    return parts[parts.length - 1] || peer;
+  }
   return peer;
+}
+
+/**
+ * Browser sockets must come from our own page (stops other websites from opening game sockets through
+ * their visitors). Non-browser clients send no Origin and are allowed. TRI_ALLOWED_ORIGINS adds origins
+ * (comma-separated); TRI_ORIGIN_CHECK=0 disables the check.
+ */
+export function originAllowed(req, env = process.env) {
+  if (env.TRI_ORIGIN_CHECK === '0') return true;
+  const origin = req.headers?.origin;
+  if (!origin || origin === 'null') return !origin; // literal "null" (sandboxed/file pages) is refused
+  let host;
+  try { host = new URL(origin).host; } catch { return false; }
+  const allowed = new Set([req.headers.host, req.headers['x-forwarded-host']].filter(Boolean).flatMap((h) => String(h).split(',').map((x) => x.trim())));
+  for (const o of String(env.TRI_ALLOWED_ORIGINS || '').split(',').map((x) => x.trim()).filter(Boolean)) {
+    try { allowed.add(new URL(o).host); } catch { allowed.add(o); }
+  }
+  return allowed.has(host);
 }
 
 export function createServer({ port = Number(process.env.PORT) || 8787, host = '0.0.0.0', speed = Number(process.env.TRI_SPEED) || 1, quiet = false, limits, emptyGraceMs } = {}) {
@@ -83,7 +107,7 @@ export function createServer({ port = Number(process.env.PORT) || 8787, host = '
   });
   server.on('clientError', (err, sock) => { try { sock.end('HTTP/1.1 400 Bad Request\r\n\r\n'); } catch { /* ignore */ } });
 
-  const wss = new WebSocketServer({ server, path: '/ws', maxPayload: 8192 });
+  const wss = new WebSocketServer({ server, path: '/ws', maxPayload: 8192, verifyClient: ({ req }) => originAllowed(req) });
   wss.on('connection', (ws, req) => lobby.attach(ws, clientIp(req)));
   lobby.startHeartbeat(wss);
 

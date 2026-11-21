@@ -16,6 +16,8 @@ export const session = {
     } catch { return null; }
   },
   save(s) { try { sessionStorage.setItem(SESSION_KEY, JSON.stringify({ ...s, t: Date.now() })); } catch { /* private mode */ } },
+  /** keep an active session alive (TTL counts from the last sign of life, not from joining) */
+  touch() { const s = this.load(); if (s) this.save(s); },
   clear() { try { sessionStorage.removeItem(SESSION_KEY); } catch { /* ignore */ } },
 };
 
@@ -59,13 +61,17 @@ export class WsConnection {
     ws.onmessage = (e) => {
       this.lastRx = Date.now();
       let m; try { m = JSON.parse(e.data); } catch { return; }
-      if (m.t === 'pong') { if (m.c) this.rtt = Date.now() - m.c; return; }
+      if (m.t === 'pong') { if (m.c) this.rtt = Date.now() - m.c; session.touch(); return; }
       if (m.t === 'welcome') {
         this.tries = 0; this.restarting = false;
         this.session = { token: m.token, code: m.code };
         session.save({ token: m.token, code: m.code, mode: m.mode, name: this.joinMsg.name });
-        // inputs queued while offline go out only once we hold our seat again
-        for (const q of this.pending.splice(0)) ws.send(JSON.stringify(q));
+        // from now on a reconnect targets THIS room: a room creator must never re-create a new room,
+        // and an expired seat in a private room falls back to rejoining it by code
+        this.joinMsg = { t: 'join', name: this.joinMsg.name, mode: m.mode === 'public' ? 'public' : 'private', code: m.code };
+        // inputs queued while offline go out only once we hold our seat again; stale pins/locks are dropped
+        const now = Date.now();
+        for (const q of this.pending.splice(0)) if (!(q.m.t === 'pin' || q.m.t === 'lock') || now - q.at < 6000) ws.send(JSON.stringify(q.m));
       }
       if (m.t === 'server' && m.code === 'restarting') this.restarting = true;
       if (m.t === 'error' && (m.code === 'expired' || m.code === 'noroom')) session.clear();
@@ -106,7 +112,7 @@ export class WsConnection {
 
   onVisibility() {
     if (this.closed) return;
-    if (document.hidden) { this.hiddenAt = Date.now(); return; }
+    if (document.hidden) { this.hiddenAt = Date.now(); session.touch(); return; }
     const away = Date.now() - (this.hiddenAt || Date.now());
     if (this.ws?.readyState !== 1) { this.kick(); return; }
     // back from background: timers in the page may have drifted, resync from the server
@@ -115,7 +121,7 @@ export class WsConnection {
 
   send(m) {
     if (this.ws?.readyState === 1 && (this.session || m.t === 'ping')) this.ws.send(JSON.stringify(m));
-    else if (!this.closed && m.t !== 'ping' && m.t !== 'snap' && this.pending.length < 20) this.pending.push(m);
+    else if (!this.closed && m.t !== 'ping' && m.t !== 'snap' && this.pending.length < 20) this.pending.push({ m, at: Date.now() });
   }
 
   close() {
