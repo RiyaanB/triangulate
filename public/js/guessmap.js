@@ -104,7 +104,7 @@ export class GuessMap {
     const t0 = performance.now();
     this[key] = 0;
     const step = (t) => {
-      this[key] = Math.min(1, (t - t0) / ms);
+      this[key] = Math.max(0, Math.min(1, (t - t0) / ms));
       this.draw();
       if (this[key] < 1) requestAnimationFrame(step);
     };

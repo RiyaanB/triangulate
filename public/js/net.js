@@ -81,12 +81,13 @@ export async function soloClueSource() {
 }
 
 export class LocalConnection {
-  constructor({ name, seed, speed = 1 }) {
+  // mode 'solo' (daily run) or 'public' (full match vs in-browser bots, used by the static build)
+  constructor({ name, seed, speed = 1, mode = 'solo', config = {} }) {
     this.onmessage = () => {};
     this.queue = [];
     this.ready = soloClueSource().then((clues) => {
       this.room = new TriangulateRoom({
-        code: 'SOLO', mode: 'solo', clues, speed, seed,
+        code: mode === 'solo' ? 'SOLO' : 'BOTS', mode, clues, speed, seed, config,
         send: (pid, msg) => setTimeout(() => this.onmessage(structuredClone(msg)), 0),
       });
       this.me = this.room.addHuman({ name });

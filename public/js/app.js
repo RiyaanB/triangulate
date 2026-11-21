@@ -34,13 +34,21 @@ function show(id) {
   if (id === 'scr-game' && map) requestAnimationFrame(() => map.resize());
 }
 
+const STATIC = !!window.TRI_STATIC;
+
 // ------------------------------------------------------------------ connecting
 function connect(kind, extra = {}) {
   sfx.unlock();
   disconnect();
   S.mode = kind === 'solo' ? 'solo' : kind;
   resetGameState();
-  if (kind === 'solo') {
+  if (STATIC && kind !== 'solo') {
+    // static build (GitHub Pages): full 20-player match against in-browser bots, no server
+    S.conn = new LocalConnection({ name: nick(), seed: 'match-' + Math.random(), speed: SPEED, mode: 'public', config: { lobbyMs: 5000 } });
+    S.conn.onmessage = onMsg;
+    S.conn.ready.catch((e) => { toast('Could not load clue pack: ' + e.message); show('scr-title'); });
+    setConn('');
+  } else if (kind === 'solo') {
     const daily = extra.practice ? 'practice-' + Math.random() : 'daily-' + new Date().toISOString().slice(0, 10);
     S.conn = new LocalConnection({ name: nick(), seed: daily, speed: SPEED });
     S.conn.onmessage = onMsg;
@@ -113,7 +121,7 @@ function setPhaseClass() {
   if (S.phase) g.classList.add('ph-' + S.phase);
 }
 function setPhaseTimer(ms) {
-  setPhaseClass(); S.phaseTotal = ms; S.phaseEnd = performance.now() + ms; }
+  setPhaseClass(); S.phaseTotal = ms; S.phaseEnd = ms ? performance.now() + ms : 0; }
 
 function applySnap(m) {
   S.you = m.you; S.code = m.code; S.mode = m.mode; S.host = m.host; S.players = m.players;
@@ -220,6 +228,11 @@ function onStage(m, silent) {
     s.classList.toggle('on', i === m.i);
     s.classList.toggle('done', i < m.i);
   });
+  if (m.i === 1 && !(m.data.coast || []).length) {
+    const t = $('#script-tag');
+    t.innerHTML = '🏜 <b>Inland</b> — no coastline in view';
+    t.classList.remove('hidden');
+  }
   if (m.i === 4 && m.data.script) {
     const t = $('#script-tag');
     t.innerHTML = m.data.translit ? `Names in <b>${m.data.script}</b> <span style="opacity:.7">(transliterated, not local)</span>` : `Names in local script: <b>${m.data.script}</b>`;
@@ -401,7 +414,7 @@ const countryName = (cc) => CC[cc] || cc;
 function tick() {
   const now = performance.now();
   const remain = Math.max(0, S.phaseEnd - now);
-  if (S.phase === 'lobby') $('#lobby-ms').textContent = S.phaseEnd ? String(Math.ceil(remain / 1000)) : '…';
+  if (S.phase === 'lobby') { $('#lobby-ms').textContent = S.phaseEnd ? String(Math.ceil(remain / 1000)) : '…'; $('.lobby-count').style.visibility = S.phaseEnd ? '' : 'hidden'; }
   if (S.phase === 'round' && S.rt) {
     const s = ring.set(S.rt.end - now, S.rt.total);
     if (s <= 5 && s > 0 && s !== S.lastTick && !S.myLock && S.alive) { S.lastTick = s; sfx.tick(); }
@@ -463,5 +476,6 @@ window.addEventListener('DOMContentLoaded', async () => {
   requestAnimationFrame(tick);
   const room = params.get('room');
   if (room) { $('#private-panel').classList.remove('hidden'); $('#code-in').value = room.toUpperCase(); }
+  if (STATIC) { $('#btn-private').classList.add('hidden'); $('#private-panel').classList.add('hidden'); }
   if (params.get('auto') === 'solo') connect('solo');
 });

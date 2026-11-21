@@ -7,7 +7,9 @@
   "scripts": {
     "build:data": "node tools/build-data.js",
     "start": "node server/index.js",
-    "test": "node tests/run-all.js"
+    "test": "node tests/run-all.js",
+    "build:static": "node tools/build-static.js",
+    "serve:static": "python3 -m http.server 8810 -d docs"
   },
   "engines": {
     "node": ">=20"

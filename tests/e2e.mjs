@@ -77,7 +77,7 @@ async function playGame(page, { tag, mobile = false, oracle = null, jitterKm = 1
     if (p3 === 'over') break;
     await page.waitForTimeout(500);
     const nowAlive = await page.evaluate(() => window.__tri.alive);
-    if (alive && !nowAlive && !seen.elim) { seen.elim = true; log(tag, 'eliminated in round', round); if (shots.elim) await shot(page, shots.elim); }
+    if (alive && !nowAlive && !seen.elim) { seen.elim = true; log(tag, 'eliminated after round', await page.evaluate(() => window.__tri.round)); if (shots.elim) await shot(page, shots.elim); }
     if (shots.board && round === 2) await shot(page, shots.board);
     // solo: once out, skip ahead
     if (!nowAlive && (await page.evaluate(() => window.__tri.mode)) === 'solo') {

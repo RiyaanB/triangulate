@@ -1,5 +1,6 @@
-node_modules/
-data/raw/
+node_modules
+data/raw
 tmp/
 test-results/
 *.log
+.claude/
