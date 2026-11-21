@@ -4,3 +4,4 @@ tmp/
 test-results/
 *.log
 .claude/
+.build-notes/

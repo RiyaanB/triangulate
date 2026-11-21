@@ -19,6 +19,6 @@ const enc = Buffer.from(JSON.stringify(all)).map((b, i) => b ^ (0x5a + (i % 13))
 fs.writeFileSync(path.join(OUT, 'data/solo-pack.json'), JSON.stringify({ v: 2, n: all.length, p: enc }));
 // flag static mode
 const idx = path.join(OUT, 'index.html');
-fs.writeFileSync(idx, fs.readFileSync(idx, 'utf8').replace('<head>', '<head>\n  <script>window.TRI_STATIC = true;</script>'));
+fs.writeFileSync(idx, fs.readFileSync(idx, 'utf8').replace('<head>', '<head>\n  <script>window.TRI_STATIC = true;</script>').replace('<small>live · 20 players</small>', '<small>vs 19 bots · instant match</small>'));
 fs.writeFileSync(path.join(OUT, '.nojekyll'), '');
 console.log(`static build: ${all.length} clues -> docs/`);
