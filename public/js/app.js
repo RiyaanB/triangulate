@@ -1,9 +1,10 @@
 // TRIANGULATE client controller: screens, message handling, HUD.
 import { $, $$, h, fmt, toast, banner, makeRing, countUp, confetti, sfx, flip } from './ui/kit.js';
-import { WsConnection, LocalConnection } from './net.js';
+import { WsConnection, LocalConnection, session } from './net.js';
 import { ClueCard } from './cluecard.js';
 import { GuessMap } from './guessmap.js';
 import { STAGE_MULT, elimCount, makeConfig } from '../shared/game/rules.js';
+import { localDay, dailyNumber, normalizeMeta, recordGame, levelFor, titleFor, liveStreak, shareText } from '../shared/game/meta.js';
 
 const params = new URLSearchParams(location.search);
 const SPEED = Number(params.get('speed')) || 1;
@@ -14,6 +15,9 @@ const S = {
   rt: null, // round timing (performance.now based)
   phaseEnd: 0, phaseTotal: 0, reveal: null, elimAfter: false, seenHint: localStorage.getItem('tri.hint') === '1',
   alive: true, lastTick: -1, overEnd: 0,
+  daily: null, // 'YYYY-MM-DD' while playing today's daily
+  myRounds: [], // my per-round results this game (share grid)
+  recorded: false, // XP/streak already recorded for this game
 };
 window.__tri = S; // for automated tests
 
@@ -49,29 +53,36 @@ function connect(kind, extra = {}) {
     S.conn.ready.catch((e) => { toast('Could not load clue pack: ' + e.message); show('scr-title'); });
     setConn('');
   } else if (kind === 'solo') {
-    const daily = extra.practice ? 'practice-' + Math.random() : 'daily-' + new Date().toISOString().slice(0, 10);
-    S.conn = new LocalConnection({ name: nick(), seed: daily, speed: SPEED });
+    // daily: same seed for everyone on the same local date -> same 5 clues (room uses a separate clue RNG)
+    S.daily = extra.practice ? null : localDay();
+    const seed = S.daily ? 'daily-' + S.daily : 'practice-' + Math.random();
+    S.conn = new LocalConnection({ name: nick(), seed, speed: SPEED });
     S.conn.onmessage = onMsg;
     S.conn.ready.catch((e) => { toast('Could not load solo pack: ' + e.message); show('scr-title'); });
     setConn('');
   } else {
-    const join = { t: 'join', name: nick(), mode: kind, code: extra.code };
+    // 'resume' = rejoin the seat saved in sessionStorage (page reload / tab killed by a mobile browser)
+    const join = kind === 'resume'
+      ? { t: 'join', resume: true, name: extra.name || nick(), mode: extra.mode, token: extra.token, code: extra.code }
+      : { t: 'join', name: nick(), mode: kind, code: extra.code };
     let opened = false;
     S.conn = new WsConnection(join, {
-      onStatus: (st) => {
+      onStatus: (st, info) => {
         if (st === 'open') opened = true;
         if (st === 'reconnecting') setConn('reconnecting…');
+        if (st === 'restarting') setConn('server restarting…');
         if (st === 'reconnected' || st === 'open') setConn('');
+        if (st === 'replaced') { toast('This game is open in another tab.', 3500); goHome(); }
         if (st === 'failed') {
           setConn('offline');
-          toast(opened ? 'Connection lost.' : 'Can’t reach the server — try Daily solo!', 4000);
-          show('scr-title');
+          toast(info?.reason ? info.reason : opened ? 'Connection lost.' : 'Can’t reach the server — try Daily solo!', 4000);
+          disconnect(); resetGameState(); show('scr-title');
         }
       },
     });
     S.conn.onmessage = onMsg;
   }
-  showLobbyLoading(kind);
+  showLobbyLoading(kind === 'resume' ? extra.mode : kind);
 }
 function disconnect() { if (S.conn) { S.conn.close(); S.conn = null; } }
 function setConn(t) { $('#conn-state').textContent = t; }
@@ -80,14 +91,14 @@ function send(m) { S.conn?.send(m); }
 function showLobbyLoading(kind) {
   if (kind === 'solo') { show('scr-game'); prepareRoundUi(); return; }
   $('#lobby-kind').textContent = kind === 'public' ? 'Public match' : 'Private room';
-  $('#lobby-title').textContent = 'Connecting…';
+  $('#lobby-title').textContent = kind === 'resume' || session.load() ? 'Rejoining…' : 'Connecting…';
   $('#lobby-players').replaceChildren();
   $('#lobby-ms').textContent = '–';
   show('scr-lobby');
 }
 
 function resetGameState() {
-  Object.assign(S, { you: null, phase: null, players: [], round: 0, stage: 0, myLock: 0, myPin: null, rt: null, reveal: null, alive: true });
+  Object.assign(S, { you: null, phase: null, players: [], round: 0, stage: 0, myLock: 0, myPin: null, rt: null, reveal: null, alive: true, myRounds: [], recorded: false });
   $('#skip-bar').classList.add('hidden');
   $('#spec-chip').classList.add('hidden');
 }
@@ -97,8 +108,13 @@ function onMsg(m) {
   switch (m.t) {
     case 'welcome': S.you = m.you; S.code = m.code; S.mode = m.mode; break;
     case 'snap': applySnap(m); break;
-    case 'players': S.players = m.players; renderPlayers(); break;
+    case 'players':
+      S.players = m.players;
+      if (m.host && m.host !== S.host) { S.host = m.host; if (S.phase === 'lobby') updateLobbyControls(); if (m.host === S.you && S.mode === 'private') toast('👑 You are now the host', 2200); }
+      renderPlayers();
+      break;
     case 'lobby': onLobby(m); break;
+    case 'server': toast(m.msg || 'Server notice', 5000); break;
     case 'intro': onIntro(m); break;
     case 'round': onRound(m); break;
     case 'stage': onStage(m); break;
@@ -109,8 +125,8 @@ function onMsg(m) {
     case 'standings': onStandings(m); break;
     case 'over': onOver(m); break;
     case 'error':
-      toast(m.msg || 'Error', 3000);
-      if (m.code === 'noroom') { disconnect(); show('scr-title'); }
+      toast(m.code === 'expired' ? 'That game has ended — jump into a new one!' : m.msg || 'Error', 3500);
+      if (['noroom', 'expired', 'full', 'busy', 'restarting', 'bad'].includes(m.code)) { disconnect(); resetGameState(); show('scr-title'); refreshTitleMeta(); }
       break;
   }
 }
@@ -131,6 +147,9 @@ function applySnap(m) {
   if (m.phase === 'lobby') { onLobby({ ms: m.ms, host: m.host, code: m.code, mode: m.mode }); return; }
   show('scr-game');
   setSpectator(!S.alive);
+  // late join into a running private game: you watch until the next game starts
+  if (me?.spec && !S.toldSpec) { S.toldSpec = true; toast('Game in progress — you’re spectating and will join the next game.', 4000); }
+  if (m.intro) { S.round = m.intro.round; S.elimAfter = m.intro.elimAfter; $('#round-chip').textContent = (innerWidth < 500 ? 'R' : 'Round ') + `${m.intro.round}/${m.intro.rounds}`; }
   if (m.phase === 'round' && m.roundInfo) {
     prepareRoundUi();
     onRound(m.roundInfo, true);
@@ -148,21 +167,28 @@ function applySnap(m) {
 
 // ------------------------------------------------------------------ lobby
 function onLobby(m) {
-  S.phase = 'lobby'; S.host = m.host; S.code = m.code;
+  S.phase = 'lobby'; S.host = m.host; S.code = m.code; S.lobbyMode = m.mode; S.lobbyMs = m.ms || 0;
+  S.toldSpec = false;
   if (S.mode === 'solo') return;
   show('scr-lobby');
-  const priv = m.mode === 'private';
-  $('#lobby-kind').textContent = priv ? 'Private room' : 'Public match';
-  $('#lobby-title').textContent = priv ? (m.ms ? 'Get ready!' : 'Waiting for host…') : 'Finding players…';
-  $('#lobby-code-row').classList.toggle('hidden', !priv);
-  $('#lobby-code').textContent = m.code;
-  const isHost = S.host === S.you;
-  $('#btn-start').classList.toggle('hidden', !(priv && isHost && !m.ms));
-  $('#bots-toggle').classList.toggle('hidden', !(priv && isHost && !m.ms));
-  if (priv && isHost && !m.ms) $('#lobby-title').textContent = 'Invite friends, then start';
+  updateLobbyControls();
   setPhaseTimer(m.ms || 0);
   if (!m.ms) $('#lobby-ms').textContent = '…';
   renderPlayers();
+}
+
+/** Lobby title/buttons depend on who is host — re-run on host migration. */
+function updateLobbyControls() {
+  const priv = S.lobbyMode === 'private';
+  const counting = !!S.lobbyMs;
+  $('#lobby-kind').textContent = priv ? 'Private room' : 'Public match';
+  $('#lobby-title').textContent = priv ? (counting ? 'Get ready!' : 'Waiting for host…') : 'Finding players…';
+  $('#lobby-code-row').classList.toggle('hidden', !priv);
+  $('#lobby-code').textContent = S.code;
+  const isHost = S.host === S.you;
+  $('#btn-start').classList.toggle('hidden', !(priv && isHost && !counting));
+  $('#bots-toggle').classList.toggle('hidden', !(priv && isHost && !counting));
+  if (priv && isHost && !counting) $('#lobby-title').textContent = 'Invite friends, then start';
 }
 
 function renderLobbyPlayers() {
@@ -200,7 +226,7 @@ function onIntro(m) {
   prepareRoundUi();
   setPhaseTimer(m.ms);
   $('#round-chip').textContent = (innerWidth < 500 ? 'R' : 'Round ') + `${m.round}/${m.rounds}`;
-  const sub = m.elimAfter ? '⚠ Bottom 20% eliminated after this round' : m.round === m.rounds ? 'Final round!' : `${m.km} km window`;
+  const sub = m.elimAfter ? `⚠ Bottom ${m.cut || 'quarter'} eliminated after this round` : m.round === m.rounds ? 'Final round!' : `${m.km} km window`;
   banner(m.round === m.rounds ? 'FINAL ROUND' : `ROUND ${m.round}`, sub, { ms: Math.min(1900, m.ms - 300) });
   renderPlayers();
 }
@@ -314,12 +340,17 @@ function onReveal(m, silent) {
   at.classList.remove('hidden');
   const res = $('#result');
   $('#res-place').replaceChildren(h('span', {}, m.answer.name), h('small', {}, countryName(m.answer.cc)));
+  if (mine) S.myRounds[m.round - 1] = { d: mine.d, bull: !!mine.bull, stage: mine.stage, pts: mine.pts };
   if (mine && S.alive) {
     $('#res-dist').textContent = mine.d == null ? 'no guess' : fmt(mine.d) + ' km';
     $('#res-mult').textContent = mine.stage ? '×' + STAGE_MULT[mine.stage - 1].toFixed(1) : '–';
+    $('#res-pts').textContent = '+0';
     if (silent) $('#res-pts').textContent = '+' + fmt(mine.pts);
     else setTimeout(() => { countUp($('#res-pts'), mine.pts, { prefix: '+', ms: 1100 }); sfx.reveal(); }, 900);
-    $('#res-pts').textContent = '+0';
+    // bullseye / streak bonus moment (guess landed inside the clue window)
+    if (mine.bull && !silent) {
+      setTimeout(() => toast(`🎯 Bullseye! +${fmt(mine.bonus)}` + (mine.streak > 1 ? ` · 🔥 ${mine.streak} in a row` : ''), 2200), 2100);
+    }
   } else {
     $('#res-dist').textContent = '–'; $('#res-mult').textContent = '–'; $('#res-pts').textContent = '–';
   }
@@ -343,7 +374,11 @@ function onStandings(m) {
       setSpectator(true);
     } else {
       toast(`💥 ${m.elim.length} eliminated`, 1800);
-      if (S.alive && S.mode) setTimeout(() => toast('You survived ✅', 1500), 500);
+      const close = (m.close || []).find((c) => c.id === S.you);
+      if (S.alive && close) {
+        // scraped through: make it a moment
+        setTimeout(() => { banner('CLOSE CALL', `Survived by just ${fmt(close.margin)} pts`, { ms: 1900, color: '#ffcc4d', cls: 'close-call' }); sfx.stage(); }, 400);
+      } else if (S.alive && S.mode) setTimeout(() => toast('You survived ✅', 1500), 500);
     }
   }
   if (innerWidth <= 1100) setTimeout(() => { if (S.phase === 'standings') $('#board').classList.add('open'); }, elim.has(S.you) ? 2700 : 0);
@@ -422,6 +457,80 @@ function onOver(m) {
   $('#btn-again').disabled = false;
   $('#btn-again').textContent = 'Play again';
   if (won) { confetti(); sfx.win(); setTimeout(() => confetti({ count: 120 }), 900); } else sfx.reveal();
+  showMetaResult(r, meIdx, m.rounds || S.rounds);
+}
+
+// ------------------------------------------------------------------ meta: XP / level / daily streak / share
+// [core] DOM for these is created here (index.html belongs to the visuals session); classes: .meta-row,
+// .meta-xp, .meta-bar, #btn-share, #title-meta — see REQUESTS-core.md for styling.
+const META_KEY = 'tri.meta';
+function loadMeta() { try { return normalizeMeta(JSON.parse(localStorage.getItem(META_KEY) || 'null')); } catch { return normalizeMeta(null); } }
+function saveMeta(m) { try { localStorage.setItem(META_KEY, JSON.stringify(m)); } catch { /* storage full / private mode */ } }
+
+function showMetaResult(ranking, meIdx, roundsPlayed) {
+  let row = $('#over-meta');
+  if (!row) {
+    row = h('div', { id: 'over-meta', class: 'meta-row', style: { margin: '6px 0 2px', fontSize: '14px', opacity: '.92', textAlign: 'center' } });
+    $('#over-me').after(row);
+  }
+  let shareBtn = $('#btn-share');
+  if (!shareBtn) {
+    shareBtn = h('button', { id: 'btn-share', class: 'btn', type: 'button' }, '📋 Share result');
+    $('#btn-again').after(shareBtn);
+  }
+  if (meIdx < 0 || S.recorded) { shareBtn.classList.toggle('hidden', meIdx < 0 || !S.shareText); if (meIdx < 0) row.replaceChildren(); return; }
+  S.recorded = true;
+  row.replaceChildren();
+  const me = ranking[meIdx];
+  const rounds = Array.from({ length: roundsPlayed }, (_, i) => S.myRounds[i] || null);
+  const res = recordGame(loadMeta(), {
+    rank: meIdx + 1, players: ranking.length, total: me.total, won: meIdx === 0,
+    roundsPlayed: rounds.filter(Boolean).length, bulls: rounds.filter((x) => x?.bull).length,
+    daily: !!S.daily && S.mode === 'solo', grid: rounds.map((x) => (x ? [x.d, x.bull ? 1 : 0, x.stage] : null)),
+  }, S.daily || localDay());
+  saveMeta(res.meta);
+  const lv = res.after;
+  row.append(
+    h('span', { class: 'meta-xp' }, `+${res.gained} XP`), ' · ',
+    h('b', {}, `Lv ${lv.level} ${titleFor(lv.level)}`), ' ',
+    h('span', { class: 'meta-bar', title: `${lv.into}/${lv.need} XP`, style: { display: 'inline-block', width: '90px', height: '6px', borderRadius: '3px', background: 'rgba(255,255,255,.15)', verticalAlign: 'middle', overflow: 'hidden' } },
+      h('span', { style: { display: 'block', height: '100%', width: (lv.frac * 100).toFixed(0) + '%', background: 'linear-gradient(90deg,#5ce1e6,#7c6cff)' } })),
+    res.dailyFirst ? ` · 🔥 ${res.streak}-day streak` : '');
+  if (res.levelUp) setTimeout(() => banner('LEVEL UP', `Level ${lv.level} — ${titleFor(lv.level)}`, { ms: 1800, color: '#5ce1e6' }), 1600);
+  const text = shareText({
+    daily: !!S.daily && S.mode === 'solo', day: S.daily || localDay(), rank: meIdx + 1, players: ranking.length,
+    total: me.total, rounds, streak: res.dailyFirst ? res.streak : liveStreak(res.meta), url: location.origin + location.pathname,
+  });
+  S.shareText = text;
+  shareBtn.classList.remove('hidden');
+  shareBtn.onclick = () => copyText(text);
+}
+
+async function copyText(text) {
+  try { await navigator.clipboard.writeText(text); toast('Result copied — paste it anywhere 📋'); return; } catch { /* fall back */ }
+  const ta = h('textarea', { style: { position: 'fixed', opacity: '0' } });
+  ta.value = text; document.body.append(ta); ta.select();
+  let ok = false; try { ok = document.execCommand('copy'); } catch { /* ignore */ }
+  ta.remove();
+  toast(ok ? 'Result copied 📋' : text, ok ? 2200 : 6000);
+}
+
+function refreshTitleMeta() {
+  const meta = loadMeta();
+  let el = $('#title-meta');
+  if (!el) {
+    el = h('div', { id: 'title-meta', class: 'meta-row', style: { fontSize: '13px', opacity: '.85', margin: '-4px 0 10px', textAlign: 'center' } });
+    $('.nick-row')?.after(el);
+  }
+  const lv = levelFor(meta.xp);
+  const streak = liveStreak(meta);
+  const today = localDay();
+  const done = !!meta.daily.results[today];
+  el.textContent = meta.games
+    ? `Lv ${lv.level} ${titleFor(lv.level)} · ${meta.wins} win${meta.wins === 1 ? '' : 's'}` + (streak ? ` · 🔥 ${streak}-day streak` : '') + (done ? ` · Daily #${dailyNumber(today)} ✓` : '')
+    : `Daily #${dailyNumber(today)} is live`;
+  const solo = $('#btn-solo');
+  if (solo) { solo.dataset.label ||= solo.textContent; solo.textContent = done ? '☀️ Daily ✓ (replay)' : solo.dataset.label; }
 }
 
 const CC = { RU: 'Russia', UA: 'Ukraine', GR: 'Greece', CY: 'Cyprus', BG: 'Bulgaria', RS: 'Serbia', MK: 'North Macedonia', IT: 'Italy', IS: 'Iceland', PT: 'Portugal', ES: 'Spain', FR: 'France', NL: 'Netherlands', DK: 'Denmark', SE: 'Sweden', NO: 'Norway', GB: 'United Kingdom', IE: 'Ireland', CH: 'Switzerland', HU: 'Hungary', RO: 'Romania', AT: 'Austria', DE: 'Germany', PL: 'Poland', LV: 'Latvia', FI: 'Finland', BY: 'Belarus', MT: 'Malta', TR: 'Türkiye', AE: 'UAE', QA: 'Qatar', BH: 'Bahrain', KW: 'Kuwait', IQ: 'Iraq', IR: 'Iran', OM: 'Oman', SA: 'Saudi Arabia', YE: 'Yemen', IL: 'Israel', LB: 'Lebanon', SY: 'Syria', EG: 'Egypt', AZ: 'Azerbaijan', GE: 'Georgia', AM: 'Armenia', ZA: 'South Africa', MG: 'Madagascar', TZ: 'Tanzania', KE: 'Kenya', UG: 'Uganda', RW: 'Rwanda', ET: 'Ethiopia', DJ: 'Djibouti', SD: 'Sudan', TN: 'Tunisia', DZ: 'Algeria', MA: 'Morocco', SN: 'Senegal', GM: 'Gambia', NG: 'Nigeria', GH: 'Ghana', CD: 'DR Congo', AO: 'Angola', ZW: 'Zimbabwe', MW: 'Malawi', MU: 'Mauritius', CV: 'Cape Verde', SO: 'Somalia', LY: 'Libya', IN: 'India', BD: 'Bangladesh', LK: 'Sri Lanka', PK: 'Pakistan', NP: 'Nepal', MV: 'Maldives', AF: 'Afghanistan', JP: 'Japan', KR: 'South Korea', KP: 'North Korea', CN: 'China', HK: 'Hong Kong', TW: 'Taiwan', MN: 'Mongolia', SG: 'Singapore', TH: 'Thailand', VN: 'Vietnam', PH: 'Philippines', ID: 'Indonesia', MY: 'Malaysia', MM: 'Myanmar', KH: 'Cambodia', LA: 'Laos', BN: 'Brunei', TL: 'Timor-Leste', UZ: 'Uzbekistan', KZ: 'Kazakhstan', KG: 'Kyrgyzstan', TM: 'Turkmenistan', TJ: 'Tajikistan', AU: 'Australia', NZ: 'New Zealand', FJ: 'Fiji', PF: 'French Polynesia', US: 'United States', PG: 'Papua New Guinea', NC: 'New Caledonia', CA: 'Canada', MX: 'Mexico', CU: 'Cuba', PA: 'Panama', PR: 'Puerto Rico', JM: 'Jamaica', NI: 'Nicaragua', GT: 'Guatemala', DO: 'Dominican Rep.', TT: 'Trinidad & Tobago', BR: 'Brazil', AR: 'Argentina', UY: 'Uruguay', CL: 'Chile', PE: 'Peru', CO: 'Colombia', VE: 'Venezuela', EC: 'Ecuador', FK: 'Falkland Is.' };
@@ -466,7 +575,7 @@ $('#btn-copy').onclick = async () => {
   const url = new URL(location.href); url.search = '?room=' + S.code;
   try { await navigator.clipboard.writeText(url.href); toast('Invite link copied'); } catch { toast(url.href, 5000); }
 };
-const goHome = () => { disconnect(); resetGameState(); show('scr-title'); };
+function goHome() { disconnect(); resetGameState(); show('scr-title'); refreshTitleMeta(); }
 $('#btn-leave-lobby').onclick = goHome;
 $('#btn-exit').onclick = () => { if (S.phase === 'over' || confirm('Leave this game?')) goHome(); };
 $('#btn-home').onclick = goHome;
@@ -494,5 +603,11 @@ window.addEventListener('DOMContentLoaded', async () => {
   const room = params.get('room');
   if (room) { $('#private-panel').classList.remove('hidden'); $('#code-in').value = room.toUpperCase(); }
   if (STATIC) { $('#btn-private').classList.add('hidden'); $('#private-panel').classList.add('hidden'); }
+  refreshTitleMeta();
   if (params.get('auto') === 'solo') connect('solo');
+  else if (!STATIC && !room) {
+    // page reload mid-game: rejoin the same seat (sessionStorage survives reloads, not new tabs)
+    const sv = session.load();
+    if (sv) connect('resume', sv);
+  }
 });
