@@ -27,6 +27,7 @@ const SOURCES = {
   ne_10m_rivers_north_america: '10m/physical', ne_10m_roads: '10m/cultural', ne_10m_railroads: '10m/cultural',
   ne_10m_urban_areas: '10m/cultural', ne_10m_populated_places: '10m/cultural',
   ne_10m_admin_0_boundary_lines_land: '10m/cultural',
+  ne_10m_geography_marine_polys: '10m/physical', ne_10m_geography_regions_polys: '10m/physical',
   ne_50m_land: '50m/physical', ne_50m_lakes: '50m/physical', ne_50m_admin_0_boundary_lines_land: '50m/cultural',
 };
 
@@ -111,15 +112,54 @@ function langsFor(loc) {
 /** Local-script name for a feature in `lang`, or null. Curated table first, then Natural Earth fields. */
 function nameIn(props, lang, kind, need) {
   const table = LOCAL_NAMES[lang];
-  const keys = kind === 'c' ? [props.NAME, props.NAME_EN, props.NAMEASCII] : [props.name_en, props.name];
+  const keys = kind === 'c' ? [props.NAME, props.NAME_EN, props.NAMEASCII] : [props.name_en ?? props.NAME_EN, props.name ?? props.NAME];
   if (table) for (const k of keys) if (k && table[k]) return table[k];
   const field = LANGS[lang]?.ne;
   let t = null;
-  if (field) t = kind === 'c' ? props['NAME_' + field.toUpperCase()] : props['name_' + field];
-  if (t) t = String(t).replace(/\s*\(.*?\)\s*/g, ' ').trim();
+  if (field) t = props['NAME_' + field.toUpperCase()] ?? props['name_' + field];
+  // drop parentheticals and Russian/Greek stress marks (combining acute) that NE sometimes carries
+  if (t) t = String(t).replace(/\s*\(.*?\)\s*/g, ' ').replace(/́/g, '').trim();
   if (!t && need && !field) need(keys.find(Boolean), props, kind);
   return t || null;
 }
+
+/** A good label anchor inside a (clipped, frame-space) ring: interior grid point farthest from the edge. */
+function interiorPoint(ring) {
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  for (const [x, y] of ring) { x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y); }
+  x0 = Math.max(x0, 0); y0 = Math.max(y0, 0); x1 = Math.min(x1, SIZE); y1 = Math.min(y1, SIZE);
+  const inside = (px, py) => {
+    let c = false;
+    for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+      const [xi, yi] = ring[i], [xj, yj] = ring[j];
+      if ((yi > py) !== (yj > py) && px < ((xj - xi) * (py - yi)) / (yj - yi) + xi) c = !c;
+    }
+    return c;
+  };
+  const edgeDist = (px, py) => {
+    let best = Infinity;
+    for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+      const [ax, ay] = ring[j], [bx, by] = ring[i];
+      const dx = bx - ax, dy = by - ay, l2 = dx * dx + dy * dy;
+      const t = l2 ? Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / l2)) : 0;
+      best = Math.min(best, Math.hypot(px - ax - t * dx, py - ay - t * dy));
+    }
+    // keep labels off the frame edge too
+    return Math.min(best, px - 20, py - 20, SIZE - 20 - px, SIZE - 20 - py);
+  };
+  let best = null;
+  const N = 14;
+  for (let i = 0; i <= N; i++) for (let j = 0; j <= N; j++) {
+    const px = x0 + ((x1 - x0) * i) / N, py = y0 + ((y1 - y0) * j) / N;
+    if (!inside(px, py)) continue;
+    const d = edgeDist(px, py);
+    if (!best || d > best.d) best = { x: px, y: py, d };
+  }
+  return best;
+}
+
+const MARINE_KINDS = /^(sea|bay|gulf|strait|channel|sound|fjord|lagoon|inlet|reef)$/i;
+const REGION_KINDS = /^(Island|Island group|Pen\/cape|Peninsula|Delta|Range\/mtn|Desert|Isthmus|Depression|Wetlands)$/;
 
 function buildLabels(loc, proj, L, lakeRings, rivers, lang, need) {
   const cands = [];
@@ -158,6 +198,22 @@ function buildLabels(loc, proj, L, lakeRings, rivers, lang, need) {
     if (ang > 90) ang -= 180; if (ang < -90) ang += 180;
     ang = Math.max(-50, Math.min(50, ang));
     cands.push({ x: line[m][0], y: line[m][1], t, k: 'r', s: 21, pri: 7, a: Math.round(ang) });
+  }
+  // named seas/bays/straits ('w', water style) and islands/peninsulas/ranges ('g', terrain style)
+  for (const [layer, kind, re, pri] of [[L.marine, 'w', MARINE_KINDS, 6.5], [L.regions, 'g', REGION_KINDS, 8]]) {
+    const parts = new Map();
+    for (const r of polygonLayer(layer, proj, { tol: 1.5, minArea: 2500 })) {
+      if (!re.test(r.props.featurecla || r.props.FEATURECLA || '')) continue;
+      const t = check(nameIn(r.props, lang, kind, need), kind);
+      if (!t) continue;
+      const area = Math.abs(ringArea(r.ring));
+      if (!parts.has(t) || parts.get(t).area < area) parts.set(t, { area, ring: r.ring });
+    }
+    for (const [t, { area, ring }] of parts) {
+      const p = interiorPoint(ring);
+      if (!p || p.d < 12) continue;
+      cands.push({ x: p.x, y: p.y, t, k: kind, s: area > 150000 ? 26 : 22, pri });
+    }
   }
   cands.sort((a, b) => a.pri - b.pri);
   const boxes = [];
@@ -269,6 +325,8 @@ export async function loadLayers() {
     urban: await loadShapefile(shp('ne_10m_urban_areas')),
     places: await loadShapefile(shp('ne_10m_populated_places')),
     borders: await loadShapefile(shp('ne_10m_admin_0_boundary_lines_land'), { filter: (p) => !/Lease|Overlay/.test(p.FEATURECLA || '') }),
+    marine: await loadShapefile(shp('ne_10m_geography_marine_polys'), { filter: (p) => MARINE_KINDS.test(p.featurecla || '') }),
+    regions: await loadShapefile(shp('ne_10m_geography_regions_polys'), { filter: (p) => REGION_KINDS.test(p.FEATURECLA || '') }),
   };
 }
 

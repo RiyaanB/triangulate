@@ -223,6 +223,7 @@ function onRound(m, silent) {
 function onStage(m, silent) {
   S.stage = m.i;
   card.draw(m.i, m.data, { animate: !silent });
+  if (m.i === 1 && m.data.borders?.length && !card.supports?.borders) drawBordersFallback(m.data.borders);
   $$('#stagebar .seg').forEach((s) => {
     const i = +s.dataset.i;
     s.classList.toggle('on', i === m.i);
@@ -240,6 +241,22 @@ function onStage(m, silent) {
   }
   if (!silent) { if (m.i > 1) sfx.stage(); }
   updateLockBtn();
+}
+
+// [core] fallback until cluecard.js renders clue-format-v2 stage-1 borders itself (see REQUESTS-core.md)
+function drawBordersFallback(paths) {
+  const host = card.layers?.coast;
+  if (!host) return;
+  for (const d of paths) {
+    const p = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    p.setAttribute('d', d);
+    p.setAttribute('fill', 'none');
+    p.setAttribute('stroke', '#f5a3c7');
+    p.setAttribute('stroke-width', '2.5');
+    p.setAttribute('stroke-dasharray', '10 7');
+    p.setAttribute('opacity', '.75');
+    host.prepend(p);
+  }
 }
 
 function updateLockBtn() {
