@@ -120,7 +120,7 @@ function onMsg(m) {
     case 'stage': onStage(m); break;
     case 'lock': break;
     case 'locked': onLocked(m); break;
-    case 'ending': toast('Everyone locked in!', 1200); break;
+    case 'ending': if (S.alive) toast('Everyone locked in!', 1200); setPhaseTimer(m.ms || 0); if (S.rt) S.rt.end = performance.now() + (m.ms || 0); break;
     case 'reveal': onReveal(m); break;
     case 'standings': onStandings(m); break;
     case 'over': onOver(m); break;
