@@ -3,6 +3,7 @@ import { $, $$, h, fmt, toast, banner, makeRing, countUp, confetti, sfx, flip } 
 import { WsConnection, LocalConnection, session } from './net.js';
 import { ClueCard } from './cluecard.js';
 import { GuessMap } from './guessmap.js';
+import { portal } from './portal.js';
 import { STAGE_MULT, elimCount, makeConfig } from '../shared/game/rules.js';
 import { localDay, dailyNumber, normalizeMeta, recordGame, levelFor, titleFor, liveStreak, shareText } from '../shared/game/meta.js';
 
@@ -68,6 +69,7 @@ function connect(kind, extra = {}) {
     // static build (GitHub Pages): full 20-player match against in-browser bots, no server
     S.conn = new LocalConnection({ name: nick(), seed: 'match-' + Math.random(), speed: SPEED, mode: 'public', config: { lobbyMs: 5000 } });
     S.conn.onmessage = onMsg;
+    portal.loadingStart(); S.conn.ready.finally(() => portal.loadingStop());
     S.conn.ready.catch((e) => { toast('Could not load clue pack: ' + e.message); show('scr-title'); });
     setConn('');
   } else if (kind === 'solo') {
@@ -77,6 +79,7 @@ function connect(kind, extra = {}) {
     const seed = S.daily ? 'daily-' + S.daily : 'practice-' + Math.random();
     S.conn = new LocalConnection({ name: nick(), seed, speed: SPEED });
     S.conn.onmessage = onMsg;
+    portal.loadingStart(); S.conn.ready.finally(() => portal.loadingStop());
     S.conn.ready.catch((e) => { toast('Could not load solo pack: ' + e.message); show('scr-title'); });
     setConn('');
   } else {
@@ -266,6 +269,7 @@ function onIntro(m) {
 }
 
 function onRound(m, silent) {
+  portal.gameplayStart();
   S.phase = 'round'; S.round = m.round; S.rounds = m.rounds; S.elimAfter = m.elimAfter;
   const now = performance.now();
   S.rt = { stageT: m.stageMs.map((x) => now + x), end: now + m.ms, total: m.totalMs };
@@ -481,6 +485,7 @@ function renderPlayers(withDelta = false, elimNow = new Set()) {
 
 // ------------------------------------------------------------------ game over
 function onOver(m, silent = false) {
+  portal.gameplayStop();
   S.phase = 'over';
   setPhaseTimer(m.ms || 0);
   S.overEnd = m.ms ? performance.now() + m.ms : 0;
@@ -505,7 +510,7 @@ function onOver(m, silent = false) {
   $('#over-sub').textContent = '';
   const meP = S.players.find((p) => p.id === S.you);
   if (meP?.ready && S.mode !== 'solo') { $('#btn-again').disabled = true; $('#btn-again').textContent = 'Waiting…'; }
-  if (!silent) { if (won) { confetti(); sfx.win(); later(() => confetti({ count: 120 }), 900); } else sfx.reveal(); }
+  if (!silent) { if (won) { confetti(); sfx.win(); portal.happytime(); later(() => confetti({ count: 120 }), 900); } else sfx.reveal(); }
   S.gid = m.gid || null;
   showMetaResult(r, meIdx, m.rounds || S.rounds, m.gid);
 }
@@ -563,7 +568,7 @@ function showMetaResult(ranking, meIdx, roundsPlayed, gid) {
   }
   const text = shareText({
     daily: !!S.daily && S.mode === 'solo', day: S.daily || localDay(), rank: meIdx + 1, players: ranking.length,
-    total: me.total, rounds, streak: res.dailyFirst ? res.streak : liveStreak(res.meta), url: location.origin + location.pathname,
+    total: me.total, rounds, streak: res.dailyFirst ? res.streak : liveStreak(res.meta), url: portal.kind ? '' : location.origin + location.pathname,
   });
   S.shareText = text;
   if (gid) markRecorded(gid, { text, row: row.textContent });
@@ -646,11 +651,19 @@ $('#btn-copy').onclick = async () => {
   const url = new URL(location.href); url.search = '?room=' + S.code;
   try { await navigator.clipboard.writeText(url.href); toast('Invite link copied'); } catch { toast(url.href, 5000); }
 };
-function goHome() { disconnect(); resetGameState(); setConn(''); show('scr-title'); refreshTitleMeta(); }
+function goHome() { portal.gameplayStop(); disconnect(); resetGameState(); setConn(''); show('scr-title'); refreshTitleMeta(); }
 $('#btn-leave-lobby').onclick = goHome;
 $('#btn-exit').onclick = () => { if (S.phase === 'over' || confirm('Leave this game?')) goHome(); };
 $('#btn-home').onclick = goHome;
-$('#btn-again').onclick = () => {
+const adBlock = (on) => { $$('#scr-over button').forEach((b) => { b.disabled = on; }); if (on) $('#btn-again').textContent = '…'; };
+$('#btn-again').onclick = async () => {
+  if (portal.active) {
+    // portal builds: end the finished match (no auto-next under the ad), a midgame ad (if any), then a fresh match
+    disconnect();
+    await portal.midgame(adBlock);
+    if (S.mode === 'solo') connect('solo', { practice: true }); else connect('public');
+    return;
+  }
   if (S.mode === 'solo') { connect('solo', { practice: true }); return; }
   send({ t: 'again' });
   $('#btn-again').disabled = true;
@@ -662,11 +675,13 @@ $('#btn-skip').onclick = () => { send({ t: 'skip' }); $('#skip-bar').classList.a
 $('#btn-board').onclick = () => $('#board').classList.toggle('open');
 $('#btn-mute').onclick = () => { $('#btn-mute').textContent = sfx.toggle() ? '🔇' : '🔊'; };
 $('#btn-mute').textContent = sfx.muted ? '🔇' : '🔊';
+portal.onMuteChange((m) => sfx.setForced(m));
 document.addEventListener('keydown', (e) => {
   if ((e.key === ' ' || e.key === 'Enter') && $('#scr-game').classList.contains('active') && document.activeElement?.tagName !== 'INPUT') { e.preventDefault(); lockIn(); }
 });
 
 window.addEventListener('DOMContentLoaded', async () => {
+  if (portal.kind) await portal.init();
   map = new GuessMap($('#map-host'), { onPin });
   window.__triMap = map;
   map.load().catch(() => toast('Could not load world map'));
