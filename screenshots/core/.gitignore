@@ -1,0 +1,5 @@
+# scratch runs (regenerate with npm test / tools/shoot-final.mjs / tools/contact-sheet.js)
+run*/
+smoke/
+static/
+contact/sheet-*.png
