@@ -1,13 +1,9 @@
 // Connections: WebSocket (live) with auto-reconnect + session resume, and an in-browser Local
 // connection for SOLO / the static build (the same room engine runs in the page).
 import { TriangulateRoom } from '../shared/game/room.js';
+import { wsUrl as pageWsUrl } from '../shared/kit/wsurl.js';
 
-export function wsUrl(loc = location) {
-  const u = new URL('ws', loc.href); // relative to page => works behind path-prefixed proxies
-  u.protocol = loc.protocol === 'https:' ? 'wss:' : 'ws:';
-  u.hash = ''; u.search = '';
-  return u.href;
-}
+export const wsUrl = (loc = location) => pageWsUrl(loc); // relative to page => works behind path-prefixed proxies
 
 // ---- session persistence: a page reload (or a mobile browser killing the tab) can rejoin the same seat
 const SESSION_KEY = 'tri.session';

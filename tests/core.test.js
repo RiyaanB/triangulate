@@ -287,6 +287,23 @@ test('server: malformed URLs, traversal and private data are refused without cra
   } finally { await srv.close(); }
 });
 
+// ------------------------------------------------------------------ reverse proxies
+test('proxy: ws URL is relative to the page (path prefix + https -> wss)', async () => {
+  const { wsUrl } = await import('../shared/kit/wsurl.js');
+  assert.equal(wsUrl(new URL('https://games.example/tri/?room=ABCD#x')), 'wss://games.example/tri/ws');
+  assert.equal(wsUrl(new URL('http://127.0.0.1:8787/')), 'ws://127.0.0.1:8787/ws');
+  assert.equal(wsUrl(new URL('https://x.example/tri/index.html')), 'wss://x.example/tri/ws');
+});
+
+test('proxy: X-Forwarded-For only trusted from loopback / TRUST_PROXY', async () => {
+  const { clientIp } = await import('../server/index.js');
+  const req = (peer, xff) => ({ socket: { remoteAddress: peer }, headers: xff ? { 'x-forwarded-for': xff } : {} });
+  assert.equal(clientIp(req('127.0.0.1', '203.0.113.7, 10.0.0.1'), 'loopback'), '203.0.113.7');
+  assert.equal(clientIp(req('198.51.100.2', '203.0.113.7'), 'loopback'), '198.51.100.2'); // spoof from the internet
+  assert.equal(clientIp(req('10.1.2.3', '203.0.113.7'), '1'), '203.0.113.7');
+  assert.equal(clientIp(req('127.0.0.1', '203.0.113.7'), '0'), '127.0.0.1');
+});
+
 // ------------------------------------------------------------------ content + balance
 test('content: built clue pool passes the audit (>= 250 clues, no hard failures)', async () => {
   if (!fs.existsSync('data/build/build-report.json')) return;
