@@ -437,6 +437,11 @@ test('regress: room-code brute force and socket churn are throttled per IP', () 
   const ws = new FakeWs(); lobby.attach(ws, '7.7.7.7');
   for (let i = 0; i < 8; i++) ws.msg({ t: 'join', mode: 'private', code: 'ZZZ' + 'ABCDEFGH'[i], name: 'x' });
   assert.equal(ws.last('error').code, 'slow');
+  // the creator-rejoin path ({mode:'create', token, code}) shares the same wrong-code budget
+  const ws2 = new FakeWs(); lobby.attach(ws2, '7.7.7.9');
+  for (let i = 0; i < 8; i++) ws2.msg({ t: 'join', mode: 'create', token: 'a'.repeat(32), code: 'YYY' + 'ABCDEFGH'[i], name: 'x' });
+  assert.equal(ws2.last('error').code, 'slow');
+  assert.equal(lobby.rooms.size, 0);
   const socks = Array.from({ length: 9 }, () => new FakeWs());
   const ok = socks.map((s) => { const r = lobby.attach(s, '7.7.7.8'); s.close(1000); return r; });
   assert.equal(ok.filter(Boolean).length, 8);

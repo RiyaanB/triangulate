@@ -45,6 +45,10 @@ try {
     const { errors, results } = await runE2E({ base, speed, lobby: srv.lobby });
     for (const [k, v] of Object.entries(results)) console.log(`   ${k}: rounds=${v.rounds} eliminated=${v.elim} -> ${v.title}`);
     if (errors.length) { failed = true; console.error(errors.map((e) => '  ✖ ' + e).join('\n')); } else console.log('  ✔ e2e ok — screenshots in ./screenshots/');
+    step('client regressions (bug hunt): fresh next game, no double XP on reload, invite-link resume, host migration');
+    const { runClientRegressions } = await import('./regress-client.mjs');
+    const rc = await runClientRegressions({ base, lobby: srv.lobby });
+    if (rc.errors.length) { failed = true; console.error(rc.errors.map((e) => '  ✖ ' + e).join('\n')); } else console.log('  ✔ client regressions ok');
   }
 } catch (e) {
   failed = true;
