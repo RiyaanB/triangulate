@@ -9,7 +9,9 @@
     "start": "node server/index.js",
     "test": "node tests/run-all.js",
     "build:static": "node tools/build-static.js",
-    "serve:static": "python3 -m http.server 8810 -d docs"
+    "serve:static": "python3 -m http.server 8810 -d docs",
+    "build:portals": "node tools/build-static.js && node tools/build-portals.js",
+    "test:portals": "node tests/portal-e2e.mjs"
   },
   "engines": {
     "node": ">=20"

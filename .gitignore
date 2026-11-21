@@ -5,3 +5,4 @@ test-results/
 *.log
 .claude/
 .build-notes/
+dist/*/game/

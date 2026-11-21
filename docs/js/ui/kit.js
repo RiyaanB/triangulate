@@ -135,9 +135,9 @@ export function confetti({ count = 180, ms = 4600 } = {}) {
 
 // ---- WebAudio sfx (procedural, no files). Toggle persisted in localStorage.
 export const sfx = (() => {
-  let ctx = null, master = null, muted = localStorage.getItem('tri.muted') === '1';
+  let ctx = null, master = null, muted = localStorage.getItem('tri.muted') === '1', forced = false;
   const ensure = () => {
-    if (muted) return null;
+    if (muted || forced) return null;
     if (!ctx) {
       try { ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch { return null; }
       master = ctx.createGain(); master.gain.value = 0.9;
@@ -170,6 +170,8 @@ export const sfx = (() => {
   return {
     unlock: ensure,
     get muted() { return muted; },
+    /** portal-forced mute (SDK muteAudio / video ad): silences without touching the player's own toggle */
+    setForced(v) { forced = !!v; if (master && ctx) master.gain.setValueAtTime(forced ? 0 : 0.9, ctx.currentTime); },
     toggle() { muted = !muted; localStorage.setItem('tri.muted', muted ? '1' : '0'); if (!muted) ensure(); return muted; },
     tick: (s = 5) => { tone(900 + (5 - s) * 140, 0.06, { type: 'square', vol: 0.035 }); tone(1800 + (5 - s) * 280, 0.03, { type: 'sine', vol: 0.02 }); },
     pin: () => { tone(380, 0.07, { type: 'triangle', vol: 0.1, slide: 420 }); noise(0.06, { vol: 0.03, from: 2500, to: 1200, delay: 0.05 }); },
