@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
+  <meta name="theme-color" content="#070d18">
+  <title>TRIANGULATE — guess the place from its shape</title>
+  <meta name="description" content="A live geo-guessing battle royale played from map shapes alone.">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/ui-kit.css">
+  <link rel="stylesheet" href="css/game.css">
+  <script src="vendor/d3.min.js" defer></script>
+  <script type="module" src="js/app.js"></script>
+</head>
+<body>
+  <div class="bg-fx" aria-hidden="true"></div>
+
+  <!-- TITLE -->
+  <section id="scr-title" class="screen active">
+    <div class="title-wrap">
+      <div class="logo">
+        <svg class="logo-mark" viewBox="0 0 100 100" aria-hidden="true">
+          <defs><linearGradient id="lg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#5ce1e6"/><stop offset="1" stop-color="#7c6cff"/></linearGradient></defs>
+          <path d="M50 8 L92 84 L8 84 Z" fill="none" stroke="url(#lg)" stroke-width="7" stroke-linejoin="round"/>
+          <circle cx="50" cy="60" r="9" fill="#ffcc4d"/>
+          <path d="M50 8 L50 60 M92 84 L50 60 M8 84 L50 60" stroke="url(#lg)" stroke-width="2.5" opacity=".6"/>
+        </svg>
+        <h1>TRIANGULATE</h1>
+      </div>
+      <p class="tagline">Guess the place from its <b>shape</b>. Last one standing wins.</p>
+      <div class="nick-row">
+        <input id="nick" class="input" maxlength="16" autocomplete="off" spellcheck="false" aria-label="Nickname">
+        <button id="dice" class="btn btn-icon" title="Random name" aria-label="Random name">🎲</button>
+      </div>
+      <button id="btn-play" class="btn btn-primary btn-xl">PLAY</button>
+      <div class="alt-row">
+        <button id="btn-solo" class="btn">☀️ Daily solo</button>
+        <button id="btn-private" class="btn">🔒 Private room</button>
+      </div>
+      <div id="private-panel" class="private-panel hidden">
+        <button id="btn-create" class="btn btn-sm">Create room</button>
+        <span class="or">or</span>
+        <input id="code-in" class="input code-input" maxlength="4" placeholder="CODE" autocomplete="off" spellcheck="false" aria-label="Room code">
+        <button id="btn-join" class="btn btn-sm">Join</button>
+      </div>
+      <div class="how">
+        <span><i class="ic ic-coast"></i>coast</span><span class="arr">→</span>
+        <span><i class="ic ic-river"></i>rivers</span><span class="arr">→</span>
+        <span><i class="ic ic-road"></i>roads</span><span class="arr">→</span>
+        <span><i class="ic ic-script"></i>names</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- LOBBY -->
+  <section id="scr-lobby" class="screen">
+    <div class="lobby card">
+      <div class="lobby-head">
+        <div>
+          <div class="eyebrow" id="lobby-kind">Public match</div>
+          <h2 id="lobby-title">Finding players…</h2>
+        </div>
+        <div class="lobby-count"><span id="lobby-ms">–</span><small>starting</small></div>
+      </div>
+      <div id="lobby-code-row" class="code-row hidden">Room code <b id="lobby-code">----</b> <button id="btn-copy" class="btn btn-sm">Copy link</button></div>
+      <div id="lobby-players" class="lobby-players"></div>
+      <div class="lobby-foot">
+        <label id="bots-toggle" class="toggle hidden"><input type="checkbox" id="bots-cb" checked> Fill with bots</label>
+        <button id="btn-start" class="btn btn-primary hidden">Start game</button>
+        <button id="btn-leave-lobby" class="btn btn-ghost">Leave</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- GAME -->
+  <section id="scr-game" class="screen">
+    <header class="topbar">
+      <div class="tb-left">
+        <svg class="tb-logo" viewBox="0 0 100 100" aria-hidden="true"><path d="M50 10 L90 82 L10 82 Z" fill="none" stroke="#5ce1e6" stroke-width="9" stroke-linejoin="round"/><circle cx="50" cy="60" r="10" fill="#ffcc4d"/></svg>
+        <span class="chip" id="round-chip">Round 1/7</span>
+        <span class="chip alive-chip" id="alive-chip">20 alive</span>
+        <span class="chip spec-chip hidden" id="spec-chip">👁 Spectating</span>
+      </div>
+      <div class="tb-right">
+        <span class="chip my-score" id="my-score">0</span>
+        <button class="btn btn-icon" id="btn-board" title="Leaderboard" aria-label="Leaderboard">🏆</button>
+        <button class="btn btn-icon" id="btn-mute" title="Sound" aria-label="Toggle sound">🔊</button>
+        <button class="btn btn-icon" id="btn-exit" title="Leave" aria-label="Leave game">✕</button>
+      </div>
+    </header>
+    <main class="game-grid">
+      <div class="clue-col">
+        <div class="clue-card card">
+          <div class="stagebar" id="stagebar">
+            <div class="seg" data-i="1"><i class="ic ic-coast"></i><span class="lbl">Coast</span><b>×2.0</b><span class="fill"></span></div>
+            <div class="seg" data-i="2"><i class="ic ic-river"></i><span class="lbl">Rivers</span><b>×1.6</b><span class="fill"></span></div>
+            <div class="seg" data-i="3"><i class="ic ic-road"></i><span class="lbl">Roads</span><b>×1.3</b><span class="fill"></span></div>
+            <div class="seg" data-i="4"><i class="ic ic-script"></i><span class="lbl">Names</span><b>×1.0</b><span class="fill"></span></div>
+          </div>
+          <div class="clue-frame" id="clue-frame">
+            <div class="clue-ring" id="ring"></div>
+            <div class="script-tag hidden" id="script-tag"></div>
+            <div class="answer-tag hidden" id="answer-tag"></div>
+            <div class="clue-wait" id="clue-wait"><div class="spinner"></div></div>
+          </div>
+        </div>
+      </div>
+      <div class="map-col card">
+        <div class="map-host" id="map-host"></div>
+        <div class="hint hidden" id="hint">Where is this? Drop a pin. Lock in early for more points.</div>
+        <div class="map-actions">
+          <button id="btn-lock" class="btn btn-primary lock-btn" disabled><span class="lock-txt">Drop a pin</span><span class="mult" id="lock-mult">×2.0</span></button>
+        </div>
+        <button id="btn-world" class="btn btn-icon world-btn" title="Show whole world" aria-label="Show whole world">🌐</button>
+        <div class="result hidden" id="result">
+          <div class="res-place" id="res-place"></div>
+          <div class="res-row">
+            <div><small>Distance</small><b id="res-dist">–</b></div>
+            <div><small>Stage</small><b id="res-mult">–</b></div>
+            <div class="res-pts"><small>Points</small><b id="res-pts">0</b></div>
+          </div>
+          <div class="res-best" id="res-best"></div>
+        </div>
+      </div>
+      <aside class="board card" id="board">
+        <div class="board-head"><span>Standings</span><small id="board-sub"></small></div>
+        <ol class="board-list" id="board-list"></ol>
+        <div class="board-foot" id="board-foot"></div>
+      </aside>
+    </main>
+    <div class="skip-bar hidden" id="skip-bar"><span>You're out — spectating.</span><button class="btn btn-sm" id="btn-skip">Skip to results ⏩</button></div>
+  </section>
+
+  <!-- GAME OVER -->
+  <section id="scr-over" class="screen">
+    <div class="over card">
+      <div class="eyebrow">Game over</div>
+      <h2 id="over-title">Winner</h2>
+      <div class="podium" id="podium"></div>
+      <p class="over-me" id="over-me"></p>
+      <div class="over-list" id="over-list"></div>
+      <div class="over-btns">
+        <button id="btn-again" class="btn btn-primary btn-xl">Play again</button>
+        <button id="btn-home" class="btn btn-ghost">Home</button>
+      </div>
+      <div class="over-sub" id="over-sub"></div>
+    </div>
+  </section>
+
+  <footer class="credits">Map data: Natural Earth (public domain) · <span id="conn-state"></span></footer>
+</body>
+</html>

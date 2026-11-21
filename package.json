@@ -1,0 +1,23 @@
+{
+  "name": "triangulate",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "TRIANGULATE - a live geo-guessing battle royale played from map shapes alone",
+  "scripts": {
+    "build:data": "node tools/build-data.js",
+    "start": "node server/index.js",
+    "test": "node tests/run-all.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "d3": "^7.9.2",
+    "shapefile": "^0.6.6",
+    "ws": "^8.23.0"
+  },
+  "devDependencies": {
+    "playwright": "^1.65.1"
+  }
+}

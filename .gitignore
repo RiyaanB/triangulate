@@ -1,0 +1,5 @@
+node_modules/
+data/raw/
+tmp/
+test-results/
+*.log
