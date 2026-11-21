@@ -6,3 +6,4 @@ test-results/
 .claude/
 .build-notes/
 dist/*/game/
+dist/crazygames-single/
