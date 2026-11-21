@@ -54,8 +54,18 @@ export async function playGame(page, { tag, mobile = false, oracle = null, jitte
         let ok = await tapLatLon(page, lat, lon, mobile);
         if (!ok) { await page.evaluate(() => window.__triMap.fitWorld(false)); await page.waitForTimeout(100); ok = await tapLatLon(page, lat, lon, mobile); }
         await page.waitForTimeout(150);
-        const pinned = await page.evaluate(() => !!window.__tri.myPin);
-        if (!pinned) throw new Error(`${tag}: pin drop failed in round ${round}`);
+        let pinned = await page.evaluate(() => !!window.__tri.myPin);
+        // a reconnect snapshot (the private scenario drops the guest's socket mid-round) can wipe a fresh
+        // pin, exactly as for a real player — who would simply tap again
+        for (let tries = 0; !pinned && tries < 4 && (await phase(page)) === 'round'; tries++) {
+          await page.waitForTimeout(400);
+          await page.evaluate(() => window.__triMap.fitWorld(false));
+          await page.waitForTimeout(100);
+          await tapLatLon(page, lat, lon, mobile);
+          await page.waitForTimeout(150);
+          pinned = await page.evaluate(() => !!window.__tri.myPin);
+        }
+        if (!pinned && (await phase(page)) === 'round') throw new Error(`${tag}: pin drop failed in round ${round}`);
         if (round === 1 && shots.pin) await shot(page, shots.pin);
         if ((await phase(page)) === 'round') {
           const btn = page.locator('#btn-lock');
