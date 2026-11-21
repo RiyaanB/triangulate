@@ -291,7 +291,7 @@ function onReveal(m, silent) {
   const byId = new Map(S.players.map((p) => [p.id, p]));
   const others = m.results.filter((r) => r.id !== S.you && r.lat != null).map((r) => ({ ...r, bot: byId.get(r.id)?.bot }));
   map.showReveal(m.answer, mine && mine.lat != null ? mine : null, others);
-  card.showAnswer(m.answer.name);
+  card.showAnswer(m.answer.name, m.answer); // [visuals] also un-redacts the clue's coordinates
   const at = $('#answer-tag');
   at.textContent = '📍 ' + m.answer.name;
   at.classList.remove('hidden');
@@ -417,7 +417,7 @@ function tick() {
   if (S.phase === 'lobby') { $('#lobby-ms').textContent = S.phaseEnd ? String(Math.ceil(remain / 1000)) : '…'; $('.lobby-count').style.visibility = S.phaseEnd ? '' : 'hidden'; }
   if (S.phase === 'round' && S.rt) {
     const s = ring.set(S.rt.end - now, S.rt.total);
-    if (s <= 5 && s > 0 && s !== S.lastTick && !S.myLock && S.alive) { S.lastTick = s; sfx.tick(); }
+    if (s <= 5 && s > 0 && s !== S.lastTick && !S.myLock && S.alive) { S.lastTick = s; sfx.tick(s); } // [visuals] pitch rises as time runs out
     $$('#stagebar .seg').forEach((seg) => {
       const i = +seg.dataset.i;
       const a = S.rt.stageT[i - 1], b = i < 4 ? S.rt.stageT[i] : S.rt.end;

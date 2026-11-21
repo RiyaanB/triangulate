@@ -1,5 +1,5 @@
 /* ==== Reusable .io-style UI kit: tokens (3 themes), buttons, cards, chips, toasts, banners, ring ====
-   Themes: default = "night" (cartographer's night), [data-theme=atlas] paper atlas, [data-theme=signal] bold flat.
+   Themes: default = "night" (cartographer's night), [data-theme=atlas] paper atlas, [data-theme=arcade] bright flat arcade.
    Map tokens (--m-*) are read by canvas/SVG renderers, so every theme restyles the maps too. */
 :root {
   --bg: #050a18;
@@ -32,8 +32,8 @@
   --ease-out: cubic-bezier(.2, .9, .25, 1);
   --ease-back: cubic-bezier(.34, 1.56, .64, 1);
   /* map tokens */
-  --m-ocean: #061024; --m-ocean2: #0a1a3a; --m-grid: rgba(110, 190, 255, 0.07); --m-ripple: rgba(90, 200, 255, 0.13);
-  --m-land: #0f1f3d; --m-land2: #17305a; --m-landdot: rgba(61, 245, 255, 0.22);
+  --m-ocean: #050c1e; --m-ocean2: #0a1834; --m-grid: rgba(110, 190, 255, 0.07); --m-ripple: rgba(90, 200, 255, 0.34);
+  --m-land: #112850; --m-land2: #1c3d6e; --m-landdot: rgba(61, 245, 255, 0.22);
   --m-coast: #6ff6ff; --m-coast-glow: rgba(61, 245, 255, 0.22);
   --m-lake: #071530; --m-river: #3d8bff; --m-river-hi: #9cd2ff;
   --m-road: #ffb23d; --m-road2: #b98a4f; --m-case: rgba(3, 8, 22, 0.85);
@@ -63,23 +63,25 @@
   --m-pin: #c0392b; --m-pin-locked: #1f5f8b; --m-truth: #2e7d4f; --m-bot: #7a3e9d; --m-human: #b7791f; --m-arc: #2a1d12;
   color-scheme: light;
 }
-[data-theme="signal"] {
-  --bg: #0c0c0e; --bg2: #151518; --panel: rgba(22, 22, 26, 0.96); --panel-solid: #17171b; --panel-hi: rgba(255, 106, 61, 0.1);
-  --line: rgba(255, 255, 255, 0.1); --line-strong: rgba(255, 255, 255, 0.24);
-  --text: #f4f1ea; --muted: #9b978f; --dim: #5d5a55;
-  --accent: #ff6a3d; --accent-ink: #160600; --accent2: #4de2ff; --hot: #ff3d5a; --gold: #ffd23d; --good: #7dff6a; --warn: #ffb23d;
-  --cta: #ff6a3d; --cta-ink: #160600;
-  --radius: 14px; --glow: none;
-  --display: "Arial Black", "Helvetica Neue", var(--font);
-  --m-ocean: #101114; --m-ocean2: #141519; --m-grid: rgba(255, 255, 255, 0.05); --m-ripple: rgba(255, 255, 255, 0.07);
-  --m-land: #1f2024; --m-land2: #26272c; --m-landdot: rgba(255, 255, 255, 0.08);
-  --m-coast: #ff6a3d; --m-coast-glow: rgba(255, 106, 61, 0.0);
-  --m-lake: #101114; --m-river: #4de2ff; --m-river-hi: #b5f3ff;
-  --m-road: #f4f1ea; --m-road2: #8f8b84; --m-case: rgba(16, 17, 20, 0.9);
-  --m-rail: #ffd23d; --m-urban: rgba(255, 210, 61, 0.14); --m-urban-line: rgba(255, 210, 61, 0.5);
-  --m-label: #f4f1ea; --m-halo: rgba(16, 17, 20, 0.95); --m-label-water: #4de2ff;
-  --m-border: rgba(255, 255, 255, 0.12);
-  --m-pin: #ff6a3d; --m-pin-locked: #7dff6a; --m-truth: #7dff6a; --m-bot: #4de2ff; --m-human: #ffd23d; --m-arc: #f4f1ea;
+[data-theme="arcade"] {
+  --bg: #5b3df0; --bg2: #7356ff; --panel: #ffffff; --panel-solid: #ffffff; --panel-hi: rgba(91, 61, 240, 0.08);
+  --line: rgba(29, 20, 66, 0.14); --line-strong: #1d1442;
+  --text: #1d1442; --muted: #5d5486; --dim: #9a93bd;
+  --accent: #ffd43b; --accent-ink: #1d1442; --accent2: #7b5cff; --hot: #ff4d6d; --gold: #ffb800; --good: #19c37d; --warn: #ff9f1c;
+  --cta: #2ee59d; --cta-ink: #0b2a1c;
+  --radius: 16px; --radius-sm: 12px; --glow: none;
+  --shadow: 0 5px 0 #1d1442, 0 0 0 2.5px #1d1442;
+  --display: "Arial Rounded MT Bold", "Nunito", "Trebuchet MS", var(--font);
+  --m-ocean: #59c3ff; --m-ocean2: #8ad6ff; --m-grid: rgba(255, 255, 255, 0.28); --m-ripple: rgba(255, 255, 255, 0.55);
+  --m-land: #ffd96a; --m-land2: #ffe9a3; --m-landdot: rgba(29, 20, 66, 0.07);
+  --m-coast: #1d1442; --m-coast-glow: rgba(29, 20, 66, 0.12);
+  --m-lake: #59c3ff; --m-river: #2f7dff; --m-river-hi: #bfe3ff;
+  --m-road: #ff4d6d; --m-road2: #ff8fa3; --m-case: #ffffff;
+  --m-rail: #7b5cff; --m-urban: rgba(255, 77, 109, 0.22); --m-urban-line: rgba(255, 77, 109, 0.7);
+  --m-label: #1d1442; --m-halo: #ffffff; --m-label-water: #1f5fcf;
+  --m-border: rgba(29, 20, 66, 0.3);
+  --m-pin: #ff4d6d; --m-pin-locked: #19c37d; --m-truth: #19c37d; --m-bot: #7b5cff; --m-human: #ff9f1c; --m-arc: #1d1442;
+  color-scheme: light;
 }
 
 * { box-sizing: border-box; }

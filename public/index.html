@@ -8,7 +8,7 @@
   <meta name="description" content="A live geo-guessing battle royale played from map shapes alone.">
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <script>
-    // theme boot (before first paint): ?theme=night|atlas|signal, else last choice
+    // theme boot (before first paint): ?theme=night|atlas|arcade, else last choice
     (function () { try {
       var q = new URLSearchParams(location.search).get('theme'), t = q || localStorage.getItem('tri.theme');
       if (q) localStorage.setItem('tri.theme', q);
@@ -62,7 +62,7 @@
         <span><i class="ic ic-script"></i>names<b>×1.0</b></span>
       </div>
       <div class="theme-pick" role="group" aria-label="Visual theme">
-        <button data-theme-set="night" title="Night">●</button><button data-theme-set="atlas" title="Atlas">●</button><button data-theme-set="signal" title="Signal">●</button>
+        <span>Style</span><button data-theme-set="night">Night</button><button data-theme-set="atlas">Atlas</button><button data-theme-set="arcade">Arcade</button>
       </div>
     </div>
   </section>

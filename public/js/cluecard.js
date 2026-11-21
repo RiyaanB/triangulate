@@ -50,9 +50,9 @@ export class ClueCard {
     const defs = el('defs');
     defs.innerHTML = `
       <pattern id="cc-grid" width="100" height="100" patternUnits="userSpaceOnUse"><path d="M100 0H0V100" fill="none" style="stroke:var(--m-grid)" stroke-width="1.5"/></pattern>
-      <pattern id="cc-hill" width="420" height="420" patternUnits="userSpaceOnUse"><image href="${hillshade()}" width="420" height="420" preserveAspectRatio="none"/></pattern>
+      <pattern id="cc-hill" width="560" height="560" patternUnits="userSpaceOnUse"><image href="${hillshade()}" width="560" height="560" preserveAspectRatio="none"/></pattern>
       <pattern id="cc-hatch" width="9" height="9" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="9" height="9" style="fill:var(--m-urban)"/><path d="M0 0V9" style="stroke:var(--m-urban-line)" stroke-width="2.2"/></pattern>
-      <radialGradient id="cc-sea" cx="50%" cy="45%" r="70%"><stop offset="0" style="stop-color:var(--m-ocean2)" stop-opacity=".9"/><stop offset="1" style="stop-color:var(--m-ocean2)" stop-opacity="0"/></radialGradient>
+      <radialGradient id="cc-sea" cx="50%" cy="45%" r="70%"><stop offset="0" style="stop-color:var(--m-ocean2)" stop-opacity=".55"/><stop offset="1" style="stop-color:var(--m-ocean2)" stop-opacity="0"/></radialGradient>
       <linearGradient id="cc-landg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" style="stop-color:var(--m-land2)"/><stop offset="1" style="stop-color:var(--m-land)"/></linearGradient>
       <radialGradient id="cc-vign" cx="50%" cy="50%" r="72%"><stop offset="62%" stop-color="#000" stop-opacity="0"/><stop offset="100%" stop-color="#000" stop-opacity=".5"/></radialGradient>
       <clipPath id="cc-landclip"><path id="cc-landclip-p" clip-rule="evenodd"/></clipPath>

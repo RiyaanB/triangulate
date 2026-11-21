@@ -11,6 +11,7 @@ export const proj = (lon, lat) => {
 };
 export const inv = (x, y) => [(x / W) * 360 - 180, (2 * Math.atan(Math.exp(Math.PI - (y * 2 * Math.PI) / W)) - Math.PI / 2) / D2R];
 const Y_TOP = proj(0, 80)[1], Y_BOT = proj(0, -58)[1];
+const LAT_MIN_Y = proj(0, -60.5)[1];
 const LOFX = matchMedia('(pointer: coarse)').matches;
 const ease = {
   outCubic: (t) => 1 - Math.pow(1 - t, 3),
@@ -89,6 +90,7 @@ export class GuessMap {
     for (const c of [this.canvas, this.base]) { c.width = Math.round(r.width * dpr); c.height = Math.round(r.height * dpr); }
     this.canvas.style.width = r.width + 'px'; this.canvas.style.height = r.height + 'px';
     const f = this.free();
+    this.fcx = f.cx;
     this.fitK = Math.min(f.w / W, f.h / (Y_BOT - Y_TOP));
     this.zoom.scaleExtent([this.fitK * 0.9, this.fitK * 120]).translateExtent([[-W, Y_TOP - 60], [2 * W, Y_BOT + 60]]).extent([[0, 0], [r.width, r.height]]);
     this.baseKey = '';
@@ -113,6 +115,7 @@ export class GuessMap {
 
   fitWorld(animate = true) {
     const f = this.free();
+    this.fcx = f.cx;
     const k = this.fitK;
     const t = d3.zoomIdentity.translate(f.cx - k * W / 2, f.cy - k * (Y_TOP + Y_BOT) / 2).scale(k);
     (animate ? this.sel.transition().duration(900).ease(d3.easeCubicInOut) : this.sel.interrupt()).call(this.zoom.transform, t);
@@ -259,7 +262,7 @@ export class GuessMap {
     if (lon > 180 || lon < -180) x = ((lon + 180) / 360) * W;
     let sx = this.t.applyX(x);
     if (!exact) {
-      const cx = this.w / 2, span = W * this.t.k;
+      const cx = this.fcx ?? this.w / 2, span = W * this.t.k;
       while (sx - cx > span / 2) sx -= span;
       while (cx - sx > span / 2) sx += span;
     }
@@ -267,7 +270,8 @@ export class GuessMap {
   }
 
   offsets() {
-    // which horizontal world copies are visible
+    // which horizontal world copies are visible (only the main copy at overview zoom: cleaner)
+    if (this.t.k < this.fitK * 1.25) return [0];
     const out = [];
     for (const o of [-W, 0, W, 2 * W]) {
       const a = this.t.applyX(o), b = this.t.applyX(o + W);
@@ -292,11 +296,14 @@ export class GuessMap {
       this.dotPat = ctx.createPattern(pc, 'repeat');
     }
     const k = t.k;
+    // hide Antarctica / polar Mercator blow-up: clip to the playable latitude band
+    ctx.save();
+    ctx.beginPath(); ctx.rect(0, t.applyY(proj(0, 84)[1]), this.w, t.applyY(LAT_MIN_Y) - t.applyY(proj(0, 84)[1])); ctx.clip();
     for (const o of this.offsets()) {
       ctx.setTransform(dpr * k, 0, 0, dpr * k, dpr * (t.x + o * k), dpr * t.y);
       ctx.strokeStyle = C.grid; ctx.lineWidth = 1 / k; ctx.stroke(this.grat);
       // coast glow (wide translucent stroke under the fill)
-      ctx.strokeStyle = C['coast-glow']; ctx.lineWidth = 6 / k; ctx.lineJoin = 'round'; ctx.stroke(this.land);
+      ctx.strokeStyle = C['coast-glow']; ctx.lineWidth = Math.min(6, 1.5 + 6 * k) / k; ctx.lineJoin = 'round'; ctx.stroke(this.land);
       ctx.fillStyle = C.land; ctx.fill(this.land, 'evenodd');
       if (k < this.fitK * 14) {
         this.dotPat.setTransform(new DOMMatrix([1 / (k * dpr), 0, 0, 1 / (k * dpr), 0, 0]));
@@ -306,6 +313,7 @@ export class GuessMap {
       ctx.strokeStyle = C.border; ctx.lineWidth = 0.9 / k; ctx.setLineDash([3 / k, 2.5 / k]); ctx.stroke(this.borders); ctx.setLineDash([]);
       ctx.strokeStyle = C.coast; ctx.globalAlpha = 0.85; ctx.lineWidth = 1.1 / k; ctx.stroke(this.land); ctx.stroke(this.lakes); ctx.globalAlpha = 1;
     }
+    ctx.restore();
   }
 
   linePath(pts, frac = 1, shift = 0) {
@@ -408,9 +416,10 @@ export class GuessMap {
             ctx.beginPath(); ctx.arc(head[0], head[1], 5, 0, Math.PI * 2); ctx.fill(); ctx.shadowBlur = 0;
           }
           if (M.d != null) {
-            const mid = af < 1 ? head : (() => { const p = M.line[Math.floor(M.line.length / 2)]; const [x, y] = this.sp(p[0], p[1], true); return [x + sh, y]; })();
+            const short = Math.hypot(mx + sh - tx, my - ty) < 110; // short arcs: park the pill above my pin
+            const mid = short ? [mx + sh, my - 30] : af < 1 ? head : (() => { const p = M.line[Math.floor(M.line.length / 2)]; const [x, y] = this.sp(p[0], p[1], true); return [x + sh, y]; })();
             const ok = M.d < 500 ? C.truth : M.d < 2000 ? C.human : C.pin;
-            this.pill(mid[0], mid[1] - 22, fmt(M.d * af) + ' km', { fg: ok, bg: C.halo, font: '800 14px' });
+            this.pill(mid[0], mid[1] - (short ? 20 : 22), fmt(M.d * af) + ' km', { fg: ok, bg: C.halo, font: '800 14px' });
           }
         }
         this.drawPin(mx + sh, my, { col: C['pin-locked'], ring: true });
