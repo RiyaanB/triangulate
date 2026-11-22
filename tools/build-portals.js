@@ -21,6 +21,7 @@ for (const [name, cfg] of Object.entries(PORTALS)) {
   const idx = path.join(game, 'index.html');
   let html = fs.readFileSync(idx, 'utf8');
   if (!html.includes('window.TRI_STATIC = true')) throw new Error('docs/index.html is not a static build');
+  html = html.replace(/\s*<script data-goatcounter[^>]*><\/script>/, ''); // portals: no analytics
   html = html.replace('<script>window.TRI_STATIC = true;</script>', `<script>window.TRI_STATIC = true;</script>\n  ${cfg.head}\n  ${CSS}`);
   fs.writeFileSync(idx, html);
   const zip = path.join(out, `triangulate-${name}.zip`);
