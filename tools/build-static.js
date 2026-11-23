@@ -23,6 +23,9 @@ fs.writeFileSync(path.join(OUT, 'data/solo-pack.json'), JSON.stringify({ v: 2, n
 const GC = '<script data-goatcounter="https://loopwork.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>'; // GoatCounter: GitHub Pages only; build-portals strips it
 // flag static mode
 const idx = path.join(OUT, 'index.html');
-fs.writeFileSync(idx, fs.readFileSync(idx, 'utf8').replace('<head>', '<head>\n  <script>window.TRI_STATIC = true;</script>\n  '+GC).replace('<small>live · 20 players</small>', '<small>vs 19 bots · instant match</small>'));
+fs.writeFileSync(idx, fs.readFileSync(idx, 'utf8').replace('<head>', '<head>\n  <script>window.TRI_STATIC = true;</script>\n  '+GC).replace('<small>live · 20 players</small>', '<small>vs 19 bots · instant match</small>')
+  // SEO for the Pages build only (canonical, OG, JSON-LD); build-portals strips the seo block
+  .replace(/<meta name="description" content="[^"]*">/, () => '<meta name="description" content="' + fs.readFileSync(path.join(ROOT, 'tools/seo-desc.txt'), 'utf8').trim() + '">')
+  .replace('</head>', () => '  ' + fs.readFileSync(path.join(ROOT, 'tools/seo-head.html'), 'utf8') + '</head>'));
 fs.writeFileSync(path.join(OUT, '.nojekyll'), '');
 console.log(`static build: ${all.length} clues${SOLO_ONLY ? ' (solo pool only)' : ''} -> docs/`);
